@@ -12,7 +12,7 @@ Ciencias de la Computación (BUAP, Facultad de Ciencias de la Computación).
 - **Título:** Automatización del pase de lista para el uso cotidiano en CU2-BUAP
 - **Autor:** Jetro Eliezer Martínez Hernández
 - **Fecha límite de entrega:** 7 de noviembre de 2026
-- **Congelamiento de código:** 12 de octubre de 2026 (sin excepciones)
+- **Congelamiento de código:** 7 de noviembre 
 
 Esto NO es un proyecto de software comercial. Es un artefacto académico que debe ser
 **defendible ante un jurado**. Un sistema sencillo cuyo comportamiento está medido vale
