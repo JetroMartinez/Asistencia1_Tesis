@@ -1,5 +1,4 @@
-package com.example.asistencia1
-import android.content.Context
+package com.example.asistencia
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

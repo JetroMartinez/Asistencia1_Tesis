@@ -1,4 +1,4 @@
-package com.example.asistencia1   // ← IMPORTANTE: usa EXACTAMENTE este package
+package com.example.asistencia   // ← IMPORTANTE: usa EXACTAMENTE este package
 
 import android.content.Context
 

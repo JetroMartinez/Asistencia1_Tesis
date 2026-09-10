@@ -1,4 +1,4 @@
-package com.example.asistencia1.ui.theme
+package com.example.asistencia.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

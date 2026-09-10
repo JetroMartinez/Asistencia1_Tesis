@@ -1,12 +1,11 @@
-package com.example.asistencia1
+package com.example.asistencia
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import com.example.asistencia1.ui.theme.Asistencia1Theme
+import com.example.asistencia.ui.theme.Asistencia1Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

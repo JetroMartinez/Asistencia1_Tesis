@@ -1,4 +1,4 @@
-package com.example.asistencia1
+package com.example.asistencia
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

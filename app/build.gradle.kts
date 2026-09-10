@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.asistencia1"
+    namespace = "com.example.asistencia"
     compileSdk = 36
 
     defaultConfig {

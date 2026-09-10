@@ -1,4 +1,4 @@
-package com.example.asistencia1
+package com.example.asistencia
 
 import org.junit.Test
 
