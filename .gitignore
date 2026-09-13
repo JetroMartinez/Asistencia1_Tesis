@@ -32,3 +32,17 @@ venv/
 *.key
 secrets.json
 /datos_reales/
+
+# Material criptografico - NUNCA versionar
+*.pem
+*.key
+firma_digital/
+
+# Datos reales de alumnos - NUNCA versionar
+*.jsonl
+*.xlsx
+*.pdf
+**/data_firmas/
+**/uploads_excel/
+**/resultados_excel/
+**/logos_pdf/
