@@ -1,0 +1,528 @@
+.
+├── Asistencias
+│   ├── templates
+│   │   └── qr_display.html
+│   └── visor.py
+├── estructura_backend.txt
+├── excel_ver
+│   ├── app.py
+│   ├── logos_pdf
+│   ├── resultados_excel
+│   │   ├── concentrado_asistencia_20260520_213138.xlsx
+│   │   ├── concentrado_asistencia_20260520_213750.xlsx
+│   │   ├── concentrado_asistencia_20260520_213850.xlsx
+│   │   ├── concentrado_asistencia_20260520_214247.xlsx
+│   │   ├── concentrado_asistencia_20260520_214703.xlsx
+│   │   ├── concentrado_asistencia_20260520_214846.xlsx
+│   │   ├── firma_calificaciones_20260520_213138.pdf
+│   │   ├── firma_calificaciones_20260520_213750.pdf
+│   │   ├── firma_calificaciones_20260520_213850.pdf
+│   │   ├── firma_calificaciones_20260520_214247.pdf
+│   │   ├── firma_calificaciones_20260520_214703.pdf
+│   │   └── firma_calificaciones_20260520_214846.pdf
+│   └── uploads_excel
+│       ├── 0f80a257f0_lista.xlsx
+│       ├── 3278315e8d_lista.xlsx
+│       ├── 37698b9435_lista.xlsx
+│       ├── 781abc4890_lista.xlsx
+│       ├── bb8dce4052_lista.xlsx
+│       └── d0acd8d6b1_lista.xlsx
+├── firma_calificaciones
+│   ├── app.py
+│   ├── data_firmas
+│   │   ├── certificados
+│   │   │   ├── 011f98aa7a4d4718832072aabbab792a.pdf
+│   │   │   ├── 0160ba5596554a8ab9ed1b182575fac0.pdf
+│   │   │   ├── 0821051ec6294297b466f9b7b32c63eb.pdf
+│   │   │   ├── 086a13d61aa949efbde71acaf82d1e23.pdf
+│   │   │   ├── 0b62558fced140c1bb31586b5a6abec7.pdf
+│   │   │   ├── 0b8f0b0fe5cc4ded8ac8f91497393c29.pdf
+│   │   │   ├── 0be752d7407549978572b8a5069d9a73.pdf
+│   │   │   ├── 0bf1a41316b6490a9681e01b3566da1b.pdf
+│   │   │   ├── 10d35258d0d74ae89d35ac84070db7e4.pdf
+│   │   │   ├── 17a7dc08642a449ab5e343f49b12c0d1.pdf
+│   │   │   ├── 1860139c050946379c9ac9a550188a65.pdf
+│   │   │   ├── 19621570e0e84d0eac434fa7356e41e3.pdf
+│   │   │   ├── 1964944e4a574fb4a1c8f333210f63ee.pdf
+│   │   │   ├── 19c608e65d2740c0b9548458f5cea89b.pdf
+│   │   │   ├── 19ce15b940d34712994fe2346dd92fb8.pdf
+│   │   │   ├── 1a05b6e22a624ac4b18cb6ad2dacd967.pdf
+│   │   │   ├── 1bed1afd5e0743af99d3ff8f5a2ba489.pdf
+│   │   │   ├── 1eb5973d691d47ac815d55c3527fa5d7.pdf
+│   │   │   ├── 2743d1d03c9e4f00b79d672f5d270dbc.pdf
+│   │   │   ├── 289a8e92837e4ae2b837424c9f984a6c.pdf
+│   │   │   ├── 2be83a78e6224612b2f958ac9e0ca11c.pdf
+│   │   │   ├── 2d9f82574bca4cdc84723ea1f340d1bd.pdf
+│   │   │   ├── 2e1fdd93fc294844b7af8d9e502882d3.pdf
+│   │   │   ├── 3087d1d2c26742888759154050eecc45.pdf
+│   │   │   ├── 31024b4d3e264ce0b6396e55df97478f.pdf
+│   │   │   ├── 3406f9d55c184373be0b9e43af926e5f.pdf
+│   │   │   ├── 34075ce21e8c47b288da7157069786b9.pdf
+│   │   │   ├── 34e321e117ba4bd098b7e60a1b9991d1.pdf
+│   │   │   ├── 3666b515e00045ac91e1adf36ee2b561.pdf
+│   │   │   ├── 3a319c9999794884a77d9257f11ffa0a.pdf
+│   │   │   ├── 3a58e975b5bd450db60b91de1a6497aa.pdf
+│   │   │   ├── 3a78d1ce5bdf4060a58702fe1c5f1a55.pdf
+│   │   │   ├── 3d19b8e7f480499cb432281b9e765522.pdf
+│   │   │   ├── 41bbe557885943098290e23f45a1a671.pdf
+│   │   │   ├── 43e977d44ad246a58d3664791ef9970e.pdf
+│   │   │   ├── 4cda04217c0945f59b5aad94609adf6b.pdf
+│   │   │   ├── 5314f4cb8ff84cd4af0add5b2bf80653.pdf
+│   │   │   ├── 5418276f10cd447c9ade8b1583d3a21b.pdf
+│   │   │   ├── 5498e0d7180a476b88f01a949e15932f.pdf
+│   │   │   ├── 55e2825bdaa34945b883d72967d65665.pdf
+│   │   │   ├── 56190f76228845ad97c42f79a0b28010.pdf
+│   │   │   ├── 5656a2f0682f471a9f82fe63ad259253.pdf
+│   │   │   ├── 565ed7724e8941128089e90c8d5f716c.pdf
+│   │   │   ├── 580a836313614df3940fdce25c301b81.pdf
+│   │   │   ├── 5947e4ff36d64940b9eb8ab46590f2ca.pdf
+│   │   │   ├── 597141c210c74fdbb20ad4d6dbd35816.pdf
+│   │   │   ├── 5b37fd73e505456a96fe8638fa515823.pdf
+│   │   │   ├── 5c3b804d5d1540e690e559ced84a018c.pdf
+│   │   │   ├── 5ceca054d99e44a19c6b4c4a3456ae70.pdf
+│   │   │   ├── 5cf0e9663b464a7fb6ef9679a2906049.pdf
+│   │   │   ├── 5f11326c080b42d1805cca1bae326c7a.pdf
+│   │   │   ├── 5f95aef1d435452aa7e37a5f23395d46.pdf
+│   │   │   ├── 60ec3f18c6de4c28bf4ac37dc4f5da4b.pdf
+│   │   │   ├── 612f02d39ce14b57919dc6b53ca62f61.pdf
+│   │   │   ├── 614d6255e9c2439494c45c51d426745a.pdf
+│   │   │   ├── 62bc398e80524481a992b09bc049b456.pdf
+│   │   │   ├── 63095b66ec524de5bf011560340ed04c.pdf
+│   │   │   ├── 636681e3f5834fdf92398b49fc8379c0.pdf
+│   │   │   ├── 640705a598de411581cfebfb8a1aae3c.pdf
+│   │   │   ├── 6423fb7f4b4841d681052d45c47d6cbb.pdf
+│   │   │   ├── 64b6ba6091ee41e585f7dda292bbeb9e.pdf
+│   │   │   ├── 6787977c9cc240f697a8d56fac2fe429.pdf
+│   │   │   ├── 67d750b14640463297ecea5c6fc9466b.pdf
+│   │   │   ├── 699b867d42834d48977c90b70c7e3d2a.pdf
+│   │   │   ├── 6cc76b1daa0e454fb14b7f24796db8d6.pdf
+│   │   │   ├── 6d07c0b96ca34a01b7238b48f77e2e03.pdf
+│   │   │   ├── 6d267ce4ea304b6f95f4dc250189d8c3.pdf
+│   │   │   ├── 6f2ef0dffd374404aec4d3ccd33f2838.pdf
+│   │   │   ├── 6f7f65e1a70e4a07aad8bf531ab67fad.pdf
+│   │   │   ├── 6f8060fa52a54b41a411b597fc61076b.pdf
+│   │   │   ├── 6f9f690a57764d14a7f956169ef8224a.pdf
+│   │   │   ├── 70515dfbf6bf446e90e02da410aac919.pdf
+│   │   │   ├── 705febc69cbd4f20967c40b6d0235293.pdf
+│   │   │   ├── 71a61a9c851449789511d5cf0fa4c70b.pdf
+│   │   │   ├── 73f269b6738b4658a6a8d373628c89a1.pdf
+│   │   │   ├── 742ee19c878a4241b2ce15d29002b621.pdf
+│   │   │   ├── 79ee30b3f8194589be3f3cd85b896a25.pdf
+│   │   │   ├── 7b41155bbd084ef48ed72c89d0d2a3d9.pdf
+│   │   │   ├── 7e741969ce2a4b2188f84885b7d622c9.pdf
+│   │   │   ├── 7ed0ae79af2046a0b2e90786f4d6a8ab.pdf
+│   │   │   ├── 80ce723047e049a1bc5b3347ab517e43.pdf
+│   │   │   ├── 82d32082a245469ca92e9ea447f8b344.pdf
+│   │   │   ├── 83098127292a4c9ebef2149d49753e11.pdf
+│   │   │   ├── 84c921eea1d64ff4849ad363b3c48144.pdf
+│   │   │   ├── 8542ae21c70743fd8a576572b207144f.pdf
+│   │   │   ├── 89d9e3c9652e4ed1b52903e73637953e.pdf
+│   │   │   ├── 89eef010c2c245d59c943b4df08488b1.pdf
+│   │   │   ├── 8b21ad4cfa66432bbca0e9cfe62945fd.pdf
+│   │   │   ├── 8c1620ce610a4ffd9f44eb48e6e608ec.pdf
+│   │   │   ├── 8c2de706b4574ab6aff60811ce7716d5.pdf
+│   │   │   ├── 8d35b031dcf04421b5b72a593fa07561.pdf
+│   │   │   ├── 8e3279285c19432ebdcfe182f1e2af5e.pdf
+│   │   │   ├── 8e740d1eb18145dbad1af028c31689cc.pdf
+│   │   │   ├── 9115606687ab44deb5e0728645687fa5.pdf
+│   │   │   ├── 92c949036b2d4cda840e1f34e524b97d.pdf
+│   │   │   ├── 92ed367615af4c588810b663405428d7.pdf
+│   │   │   ├── 94d18abffc9643fc8ccabef4147ff56d.pdf
+│   │   │   ├── 954028fcb7574def96af6db1f34b2dc4.pdf
+│   │   │   ├── 95817a86fa694db383d55a99ccd7e8a4.pdf
+│   │   │   ├── 96dc87c41ef94a6ebba0d30f95d12c64.pdf
+│   │   │   ├── 9be92ce7dbad4e0e880d644750c68676.pdf
+│   │   │   ├── 9e1c614017cc46ad80d7c3b8df85230b.pdf
+│   │   │   ├── 9e22f55d201441bd9b1f1df3f9f88d0b.pdf
+│   │   │   ├── 9e697fee584243cca1177021af5078e0.pdf
+│   │   │   ├── 9fd6c62c84e748d59f2d6c1cfadd5391.pdf
+│   │   │   ├── a0f792263f774fd9a12cac2a96978298.pdf
+│   │   │   ├── a2c95436b6dc400fbd838af815413bc5.pdf
+│   │   │   ├── a33b223dfd4b4f9cb1a91f9f9d7cb4cc.pdf
+│   │   │   ├── a37a1c0c834f4084a976188a16911b0a.pdf
+│   │   │   ├── a4ab2d2d98b342399f6f07d0928a7555.pdf
+│   │   │   ├── a5caf567c4114affad13de7e39fbbc70.pdf
+│   │   │   ├── a6c8c64e5ef4444cbef15be0cba391ea.pdf
+│   │   │   ├── a7ba438450a94b2ca4a3577a1dee1451.pdf
+│   │   │   ├── a87e7ec14de6447796e39775dd31ca71.pdf
+│   │   │   ├── a8d9979dffeb40708a8b11785d73a29f.pdf
+│   │   │   ├── ab1af68c1ea240408d14ed9ec9994953.pdf
+│   │   │   ├── ab6453c5393e405fa17634ec4aa2fa96.pdf
+│   │   │   ├── aca633f5e3854707965acd4470d7befc.pdf
+│   │   │   ├── adbac669ef7949249c3cc54286885ea8.pdf
+│   │   │   ├── ade456941efe4ef89a8aea601a431a18.pdf
+│   │   │   ├── b04e2d8078a94c78b7995a028e652d4e.pdf
+│   │   │   ├── b0dd7e49671749cab89c9670f8fd1454.pdf
+│   │   │   ├── b40eeb09c9c2492ab108bc0bab42e7d7.pdf
+│   │   │   ├── b54452d522ac4a1191c0f8184546f4a0.pdf
+│   │   │   ├── b6305f771d0e4f9189ede72410286cc1.pdf
+│   │   │   ├── b79011fbec674dadbc7113c8ccb0d5d3.pdf
+│   │   │   ├── ba6fba95500f4a8f84fe58ef1778d136.pdf
+│   │   │   ├── bbc4e7581fb94c82844053ac7b04cf46.pdf
+│   │   │   ├── bcafb47116314450b1e0a9bce9662896.pdf
+│   │   │   ├── be601aabfd0b4281b7a0882c8cc8dbbd.pdf
+│   │   │   ├── c2eb2ff203714badb0dc4915a5aba521.pdf
+│   │   │   ├── c3594818102f43388938985b0deac318.pdf
+│   │   │   ├── c57ca7178c354a1aa10be8785a242d67.pdf
+│   │   │   ├── c685537a5fd04198b698f8e0feef4de3.pdf
+│   │   │   ├── c975e04b6e974ec48fdda5ed0842940d.pdf
+│   │   │   ├── cf04e4afffcf4de89da0d24a2861e8e7.pdf
+│   │   │   ├── d3a470f732344d76bec7577384bc3ef7.pdf
+│   │   │   ├── d54b315f0b2e4def9e5e086ffd009761.pdf
+│   │   │   ├── d57d0a72aa594a83a523bfe4b539392d.pdf
+│   │   │   ├── d8419fac71d3405c822a43f1365c2a7c.pdf
+│   │   │   ├── dacd66ee730d4cc1abbb519a913212a4.pdf
+│   │   │   ├── dafd8027eda84787a67a0fa981345755.pdf
+│   │   │   ├── db58ef3f15324ca8bab1bcc09ae26028.pdf
+│   │   │   ├── e0886a983db24306bdcacfa5f8dd67e4.pdf
+│   │   │   ├── e3d0213dbbfc4b13b486053ffb6f4556.pdf
+│   │   │   ├── e49dad89f9ac43258f3efa47ae1536c2.pdf
+│   │   │   ├── e641ea2e46804cd7a8ee08c0cbcc8483.pdf
+│   │   │   ├── e74ed1ea025e4483985d5c0ed17174d0.pdf
+│   │   │   ├── e7a7cd1e617046429ce8309c8c5cf145.pdf
+│   │   │   ├── eabc42fb270a4837b22b323f566a56ad.pdf
+│   │   │   ├── ecc2fad9e0d346ff9cebe1084a77ce05.pdf
+│   │   │   ├── ecc716f9a2a1460d8a12b8c74dce3ee7.pdf
+│   │   │   ├── ee32b11f38954ecb93c418c2e9b775ee.pdf
+│   │   │   ├── f4de972db35e48e5a59654ac250c07aa.pdf
+│   │   │   ├── f94fd5c987d34c8fbafe40669b989f9c.pdf
+│   │   │   ├── f9e34f1302d04f77a1b0a60b0ca964a6.pdf
+│   │   │   ├── fc79de20471c4814b801ca60ec861282.pdf
+│   │   │   └── fee4805657a74d768957259cab47aeea.pdf
+│   │   └── qr
+│   │       ├── 011f98aa7a4d4718832072aabbab792a_servidor.png
+│   │       ├── 011f98aa7a4d4718832072aabbab792a_usuario.png
+│   │       ├── 0160ba5596554a8ab9ed1b182575fac0_servidor.png
+│   │       ├── 0160ba5596554a8ab9ed1b182575fac0_usuario.png
+│   │       ├── 0821051ec6294297b466f9b7b32c63eb_servidor.png
+│   │       ├── 0821051ec6294297b466f9b7b32c63eb_usuario.png
+│   │       ├── 086a13d61aa949efbde71acaf82d1e23_servidor.png
+│   │       ├── 086a13d61aa949efbde71acaf82d1e23_usuario.png
+│   │       ├── 0b62558fced140c1bb31586b5a6abec7_servidor.png
+│   │       ├── 0b62558fced140c1bb31586b5a6abec7_usuario.png
+│   │       ├── 0b8f0b0fe5cc4ded8ac8f91497393c29_servidor.png
+│   │       ├── 0b8f0b0fe5cc4ded8ac8f91497393c29_usuario.png
+│   │       ├── 0be752d7407549978572b8a5069d9a73_servidor.png
+│   │       ├── 0be752d7407549978572b8a5069d9a73_usuario.png
+│   │       ├── 0bf1a41316b6490a9681e01b3566da1b_servidor.png
+│   │       ├── 0bf1a41316b6490a9681e01b3566da1b_usuario.png
+│   │       ├── 10d35258d0d74ae89d35ac84070db7e4_servidor.png
+│   │       ├── 10d35258d0d74ae89d35ac84070db7e4_usuario.png
+│   │       ├── 17a7dc08642a449ab5e343f49b12c0d1_servidor.png
+│   │       ├── 17a7dc08642a449ab5e343f49b12c0d1_usuario.png
+│   │       ├── 1860139c050946379c9ac9a550188a65_servidor.png
+│   │       ├── 1860139c050946379c9ac9a550188a65_usuario.png
+│   │       ├── 19621570e0e84d0eac434fa7356e41e3_servidor.png
+│   │       ├── 19621570e0e84d0eac434fa7356e41e3_usuario.png
+│   │       ├── 1964944e4a574fb4a1c8f333210f63ee_servidor.png
+│   │       ├── 1964944e4a574fb4a1c8f333210f63ee_usuario.png
+│   │       ├── 19c608e65d2740c0b9548458f5cea89b_servidor.png
+│   │       ├── 19c608e65d2740c0b9548458f5cea89b_usuario.png
+│   │       ├── 19ce15b940d34712994fe2346dd92fb8_servidor.png
+│   │       ├── 19ce15b940d34712994fe2346dd92fb8_usuario.png
+│   │       ├── 1a05b6e22a624ac4b18cb6ad2dacd967_servidor.png
+│   │       ├── 1a05b6e22a624ac4b18cb6ad2dacd967_usuario.png
+│   │       ├── 1bed1afd5e0743af99d3ff8f5a2ba489_servidor.png
+│   │       ├── 1bed1afd5e0743af99d3ff8f5a2ba489_usuario.png
+│   │       ├── 1eb5973d691d47ac815d55c3527fa5d7_servidor.png
+│   │       ├── 1eb5973d691d47ac815d55c3527fa5d7_usuario.png
+│   │       ├── 2743d1d03c9e4f00b79d672f5d270dbc_servidor.png
+│   │       ├── 2743d1d03c9e4f00b79d672f5d270dbc_usuario.png
+│   │       ├── 289a8e92837e4ae2b837424c9f984a6c_servidor.png
+│   │       ├── 289a8e92837e4ae2b837424c9f984a6c_usuario.png
+│   │       ├── 2be83a78e6224612b2f958ac9e0ca11c_servidor.png
+│   │       ├── 2be83a78e6224612b2f958ac9e0ca11c_usuario.png
+│   │       ├── 2d9f82574bca4cdc84723ea1f340d1bd_servidor.png
+│   │       ├── 2d9f82574bca4cdc84723ea1f340d1bd_usuario.png
+│   │       ├── 2e1fdd93fc294844b7af8d9e502882d3_servidor.png
+│   │       ├── 2e1fdd93fc294844b7af8d9e502882d3_usuario.png
+│   │       ├── 3087d1d2c26742888759154050eecc45_servidor.png
+│   │       ├── 3087d1d2c26742888759154050eecc45_usuario.png
+│   │       ├── 31024b4d3e264ce0b6396e55df97478f_servidor.png
+│   │       ├── 31024b4d3e264ce0b6396e55df97478f_usuario.png
+│   │       ├── 3406f9d55c184373be0b9e43af926e5f_servidor.png
+│   │       ├── 3406f9d55c184373be0b9e43af926e5f_usuario.png
+│   │       ├── 34075ce21e8c47b288da7157069786b9_servidor.png
+│   │       ├── 34075ce21e8c47b288da7157069786b9_usuario.png
+│   │       ├── 34e321e117ba4bd098b7e60a1b9991d1_servidor.png
+│   │       ├── 34e321e117ba4bd098b7e60a1b9991d1_usuario.png
+│   │       ├── 3666b515e00045ac91e1adf36ee2b561_servidor.png
+│   │       ├── 3666b515e00045ac91e1adf36ee2b561_usuario.png
+│   │       ├── 3a319c9999794884a77d9257f11ffa0a_servidor.png
+│   │       ├── 3a319c9999794884a77d9257f11ffa0a_usuario.png
+│   │       ├── 3a58e975b5bd450db60b91de1a6497aa_servidor.png
+│   │       ├── 3a58e975b5bd450db60b91de1a6497aa_usuario.png
+│   │       ├── 3a78d1ce5bdf4060a58702fe1c5f1a55_servidor.png
+│   │       ├── 3a78d1ce5bdf4060a58702fe1c5f1a55_usuario.png
+│   │       ├── 3d19b8e7f480499cb432281b9e765522_servidor.png
+│   │       ├── 3d19b8e7f480499cb432281b9e765522_usuario.png
+│   │       ├── 41bbe557885943098290e23f45a1a671_servidor.png
+│   │       ├── 41bbe557885943098290e23f45a1a671_usuario.png
+│   │       ├── 43e977d44ad246a58d3664791ef9970e_servidor.png
+│   │       ├── 43e977d44ad246a58d3664791ef9970e_usuario.png
+│   │       ├── 4cda04217c0945f59b5aad94609adf6b_servidor.png
+│   │       ├── 4cda04217c0945f59b5aad94609adf6b_usuario.png
+│   │       ├── 5314f4cb8ff84cd4af0add5b2bf80653_servidor.png
+│   │       ├── 5314f4cb8ff84cd4af0add5b2bf80653_usuario.png
+│   │       ├── 5418276f10cd447c9ade8b1583d3a21b_servidor.png
+│   │       ├── 5418276f10cd447c9ade8b1583d3a21b_usuario.png
+│   │       ├── 5498e0d7180a476b88f01a949e15932f_servidor.png
+│   │       ├── 5498e0d7180a476b88f01a949e15932f_usuario.png
+│   │       ├── 55e2825bdaa34945b883d72967d65665_servidor.png
+│   │       ├── 55e2825bdaa34945b883d72967d65665_usuario.png
+│   │       ├── 56190f76228845ad97c42f79a0b28010_servidor.png
+│   │       ├── 56190f76228845ad97c42f79a0b28010_usuario.png
+│   │       ├── 5656a2f0682f471a9f82fe63ad259253_servidor.png
+│   │       ├── 5656a2f0682f471a9f82fe63ad259253_usuario.png
+│   │       ├── 565ed7724e8941128089e90c8d5f716c_servidor.png
+│   │       ├── 565ed7724e8941128089e90c8d5f716c_usuario.png
+│   │       ├── 580a836313614df3940fdce25c301b81_servidor.png
+│   │       ├── 580a836313614df3940fdce25c301b81_usuario.png
+│   │       ├── 5947e4ff36d64940b9eb8ab46590f2ca_servidor.png
+│   │       ├── 5947e4ff36d64940b9eb8ab46590f2ca_usuario.png
+│   │       ├── 597141c210c74fdbb20ad4d6dbd35816_servidor.png
+│   │       ├── 597141c210c74fdbb20ad4d6dbd35816_usuario.png
+│   │       ├── 5b37fd73e505456a96fe8638fa515823_servidor.png
+│   │       ├── 5b37fd73e505456a96fe8638fa515823_usuario.png
+│   │       ├── 5c3b804d5d1540e690e559ced84a018c_servidor.png
+│   │       ├── 5c3b804d5d1540e690e559ced84a018c_usuario.png
+│   │       ├── 5ceca054d99e44a19c6b4c4a3456ae70_servidor.png
+│   │       ├── 5ceca054d99e44a19c6b4c4a3456ae70_usuario.png
+│   │       ├── 5cf0e9663b464a7fb6ef9679a2906049_servidor.png
+│   │       ├── 5cf0e9663b464a7fb6ef9679a2906049_usuario.png
+│   │       ├── 5f11326c080b42d1805cca1bae326c7a_servidor.png
+│   │       ├── 5f11326c080b42d1805cca1bae326c7a_usuario.png
+│   │       ├── 5f95aef1d435452aa7e37a5f23395d46_servidor.png
+│   │       ├── 5f95aef1d435452aa7e37a5f23395d46_usuario.png
+│   │       ├── 60ec3f18c6de4c28bf4ac37dc4f5da4b_servidor.png
+│   │       ├── 60ec3f18c6de4c28bf4ac37dc4f5da4b_usuario.png
+│   │       ├── 612f02d39ce14b57919dc6b53ca62f61_servidor.png
+│   │       ├── 612f02d39ce14b57919dc6b53ca62f61_usuario.png
+│   │       ├── 614d6255e9c2439494c45c51d426745a_servidor.png
+│   │       ├── 614d6255e9c2439494c45c51d426745a_usuario.png
+│   │       ├── 62bc398e80524481a992b09bc049b456_servidor.png
+│   │       ├── 62bc398e80524481a992b09bc049b456_usuario.png
+│   │       ├── 63095b66ec524de5bf011560340ed04c_servidor.png
+│   │       ├── 63095b66ec524de5bf011560340ed04c_usuario.png
+│   │       ├── 636681e3f5834fdf92398b49fc8379c0_servidor.png
+│   │       ├── 636681e3f5834fdf92398b49fc8379c0_usuario.png
+│   │       ├── 640705a598de411581cfebfb8a1aae3c_servidor.png
+│   │       ├── 640705a598de411581cfebfb8a1aae3c_usuario.png
+│   │       ├── 6423fb7f4b4841d681052d45c47d6cbb_servidor.png
+│   │       ├── 6423fb7f4b4841d681052d45c47d6cbb_usuario.png
+│   │       ├── 64b6ba6091ee41e585f7dda292bbeb9e_servidor.png
+│   │       ├── 64b6ba6091ee41e585f7dda292bbeb9e_usuario.png
+│   │       ├── 6787977c9cc240f697a8d56fac2fe429_servidor.png
+│   │       ├── 6787977c9cc240f697a8d56fac2fe429_usuario.png
+│   │       ├── 67d750b14640463297ecea5c6fc9466b_servidor.png
+│   │       ├── 67d750b14640463297ecea5c6fc9466b_usuario.png
+│   │       ├── 699b867d42834d48977c90b70c7e3d2a_servidor.png
+│   │       ├── 699b867d42834d48977c90b70c7e3d2a_usuario.png
+│   │       ├── 6cc76b1daa0e454fb14b7f24796db8d6_servidor.png
+│   │       ├── 6cc76b1daa0e454fb14b7f24796db8d6_usuario.png
+│   │       ├── 6d07c0b96ca34a01b7238b48f77e2e03_servidor.png
+│   │       ├── 6d07c0b96ca34a01b7238b48f77e2e03_usuario.png
+│   │       ├── 6d267ce4ea304b6f95f4dc250189d8c3_servidor.png
+│   │       ├── 6d267ce4ea304b6f95f4dc250189d8c3_usuario.png
+│   │       ├── 6f2ef0dffd374404aec4d3ccd33f2838_servidor.png
+│   │       ├── 6f2ef0dffd374404aec4d3ccd33f2838_usuario.png
+│   │       ├── 6f7f65e1a70e4a07aad8bf531ab67fad_servidor.png
+│   │       ├── 6f7f65e1a70e4a07aad8bf531ab67fad_usuario.png
+│   │       ├── 6f8060fa52a54b41a411b597fc61076b_servidor.png
+│   │       ├── 6f8060fa52a54b41a411b597fc61076b_usuario.png
+│   │       ├── 6f9f690a57764d14a7f956169ef8224a_servidor.png
+│   │       ├── 6f9f690a57764d14a7f956169ef8224a_usuario.png
+│   │       ├── 70515dfbf6bf446e90e02da410aac919_servidor.png
+│   │       ├── 70515dfbf6bf446e90e02da410aac919_usuario.png
+│   │       ├── 705febc69cbd4f20967c40b6d0235293_servidor.png
+│   │       ├── 705febc69cbd4f20967c40b6d0235293_usuario.png
+│   │       ├── 71a61a9c851449789511d5cf0fa4c70b_servidor.png
+│   │       ├── 71a61a9c851449789511d5cf0fa4c70b_usuario.png
+│   │       ├── 73f269b6738b4658a6a8d373628c89a1_servidor.png
+│   │       ├── 73f269b6738b4658a6a8d373628c89a1_usuario.png
+│   │       ├── 742ee19c878a4241b2ce15d29002b621_servidor.png
+│   │       ├── 742ee19c878a4241b2ce15d29002b621_usuario.png
+│   │       ├── 79ee30b3f8194589be3f3cd85b896a25_servidor.png
+│   │       ├── 79ee30b3f8194589be3f3cd85b896a25_usuario.png
+│   │       ├── 7b41155bbd084ef48ed72c89d0d2a3d9_servidor.png
+│   │       ├── 7b41155bbd084ef48ed72c89d0d2a3d9_usuario.png
+│   │       ├── 7e741969ce2a4b2188f84885b7d622c9_servidor.png
+│   │       ├── 7e741969ce2a4b2188f84885b7d622c9_usuario.png
+│   │       ├── 7ed0ae79af2046a0b2e90786f4d6a8ab_servidor.png
+│   │       ├── 7ed0ae79af2046a0b2e90786f4d6a8ab_usuario.png
+│   │       ├── 80ce723047e049a1bc5b3347ab517e43_servidor.png
+│   │       ├── 80ce723047e049a1bc5b3347ab517e43_usuario.png
+│   │       ├── 82d32082a245469ca92e9ea447f8b344_servidor.png
+│   │       ├── 82d32082a245469ca92e9ea447f8b344_usuario.png
+│   │       ├── 83098127292a4c9ebef2149d49753e11_servidor.png
+│   │       ├── 83098127292a4c9ebef2149d49753e11_usuario.png
+│   │       ├── 84c921eea1d64ff4849ad363b3c48144_servidor.png
+│   │       ├── 84c921eea1d64ff4849ad363b3c48144_usuario.png
+│   │       ├── 8542ae21c70743fd8a576572b207144f_servidor.png
+│   │       ├── 8542ae21c70743fd8a576572b207144f_usuario.png
+│   │       ├── 89d9e3c9652e4ed1b52903e73637953e_servidor.png
+│   │       ├── 89d9e3c9652e4ed1b52903e73637953e_usuario.png
+│   │       ├── 89eef010c2c245d59c943b4df08488b1_servidor.png
+│   │       ├── 89eef010c2c245d59c943b4df08488b1_usuario.png
+│   │       ├── 8b21ad4cfa66432bbca0e9cfe62945fd_servidor.png
+│   │       ├── 8b21ad4cfa66432bbca0e9cfe62945fd_usuario.png
+│   │       ├── 8c1620ce610a4ffd9f44eb48e6e608ec_servidor.png
+│   │       ├── 8c1620ce610a4ffd9f44eb48e6e608ec_usuario.png
+│   │       ├── 8c2de706b4574ab6aff60811ce7716d5_servidor.png
+│   │       ├── 8c2de706b4574ab6aff60811ce7716d5_usuario.png
+│   │       ├── 8d35b031dcf04421b5b72a593fa07561_servidor.png
+│   │       ├── 8d35b031dcf04421b5b72a593fa07561_usuario.png
+│   │       ├── 8e3279285c19432ebdcfe182f1e2af5e_servidor.png
+│   │       ├── 8e3279285c19432ebdcfe182f1e2af5e_usuario.png
+│   │       ├── 8e740d1eb18145dbad1af028c31689cc_servidor.png
+│   │       ├── 8e740d1eb18145dbad1af028c31689cc_usuario.png
+│   │       ├── 9115606687ab44deb5e0728645687fa5_servidor.png
+│   │       ├── 9115606687ab44deb5e0728645687fa5_usuario.png
+│   │       ├── 92c949036b2d4cda840e1f34e524b97d_servidor.png
+│   │       ├── 92c949036b2d4cda840e1f34e524b97d_usuario.png
+│   │       ├── 92ed367615af4c588810b663405428d7_servidor.png
+│   │       ├── 92ed367615af4c588810b663405428d7_usuario.png
+│   │       ├── 94d18abffc9643fc8ccabef4147ff56d_servidor.png
+│   │       ├── 94d18abffc9643fc8ccabef4147ff56d_usuario.png
+│   │       ├── 954028fcb7574def96af6db1f34b2dc4_servidor.png
+│   │       ├── 954028fcb7574def96af6db1f34b2dc4_usuario.png
+│   │       ├── 95817a86fa694db383d55a99ccd7e8a4_servidor.png
+│   │       ├── 95817a86fa694db383d55a99ccd7e8a4_usuario.png
+│   │       ├── 96dc87c41ef94a6ebba0d30f95d12c64_servidor.png
+│   │       ├── 96dc87c41ef94a6ebba0d30f95d12c64_usuario.png
+│   │       ├── 9be92ce7dbad4e0e880d644750c68676_servidor.png
+│   │       ├── 9be92ce7dbad4e0e880d644750c68676_usuario.png
+│   │       ├── 9e1c614017cc46ad80d7c3b8df85230b_servidor.png
+│   │       ├── 9e1c614017cc46ad80d7c3b8df85230b_usuario.png
+│   │       ├── 9e22f55d201441bd9b1f1df3f9f88d0b_servidor.png
+│   │       ├── 9e22f55d201441bd9b1f1df3f9f88d0b_usuario.png
+│   │       ├── 9e697fee584243cca1177021af5078e0_servidor.png
+│   │       ├── 9e697fee584243cca1177021af5078e0_usuario.png
+│   │       ├── 9fd6c62c84e748d59f2d6c1cfadd5391_servidor.png
+│   │       ├── 9fd6c62c84e748d59f2d6c1cfadd5391_usuario.png
+│   │       ├── a0f792263f774fd9a12cac2a96978298_servidor.png
+│   │       ├── a0f792263f774fd9a12cac2a96978298_usuario.png
+│   │       ├── a2c95436b6dc400fbd838af815413bc5_servidor.png
+│   │       ├── a2c95436b6dc400fbd838af815413bc5_usuario.png
+│   │       ├── a33b223dfd4b4f9cb1a91f9f9d7cb4cc_servidor.png
+│   │       ├── a33b223dfd4b4f9cb1a91f9f9d7cb4cc_usuario.png
+│   │       ├── a37a1c0c834f4084a976188a16911b0a_servidor.png
+│   │       ├── a37a1c0c834f4084a976188a16911b0a_usuario.png
+│   │       ├── a4ab2d2d98b342399f6f07d0928a7555_servidor.png
+│   │       ├── a4ab2d2d98b342399f6f07d0928a7555_usuario.png
+│   │       ├── a5caf567c4114affad13de7e39fbbc70_servidor.png
+│   │       ├── a5caf567c4114affad13de7e39fbbc70_usuario.png
+│   │       ├── a6c8c64e5ef4444cbef15be0cba391ea_servidor.png
+│   │       ├── a6c8c64e5ef4444cbef15be0cba391ea_usuario.png
+│   │       ├── a7ba438450a94b2ca4a3577a1dee1451_servidor.png
+│   │       ├── a7ba438450a94b2ca4a3577a1dee1451_usuario.png
+│   │       ├── a87e7ec14de6447796e39775dd31ca71_servidor.png
+│   │       ├── a87e7ec14de6447796e39775dd31ca71_usuario.png
+│   │       ├── a8d9979dffeb40708a8b11785d73a29f_servidor.png
+│   │       ├── a8d9979dffeb40708a8b11785d73a29f_usuario.png
+│   │       ├── ab1af68c1ea240408d14ed9ec9994953_servidor.png
+│   │       ├── ab1af68c1ea240408d14ed9ec9994953_usuario.png
+│   │       ├── ab6453c5393e405fa17634ec4aa2fa96_servidor.png
+│   │       ├── ab6453c5393e405fa17634ec4aa2fa96_usuario.png
+│   │       ├── aca633f5e3854707965acd4470d7befc_servidor.png
+│   │       ├── aca633f5e3854707965acd4470d7befc_usuario.png
+│   │       ├── adbac669ef7949249c3cc54286885ea8_servidor.png
+│   │       ├── adbac669ef7949249c3cc54286885ea8_usuario.png
+│   │       ├── ade456941efe4ef89a8aea601a431a18_servidor.png
+│   │       ├── ade456941efe4ef89a8aea601a431a18_usuario.png
+│   │       ├── b04e2d8078a94c78b7995a028e652d4e_servidor.png
+│   │       ├── b04e2d8078a94c78b7995a028e652d4e_usuario.png
+│   │       ├── b0dd7e49671749cab89c9670f8fd1454_servidor.png
+│   │       ├── b0dd7e49671749cab89c9670f8fd1454_usuario.png
+│   │       ├── b40eeb09c9c2492ab108bc0bab42e7d7_servidor.png
+│   │       ├── b40eeb09c9c2492ab108bc0bab42e7d7_usuario.png
+│   │       ├── b54452d522ac4a1191c0f8184546f4a0_servidor.png
+│   │       ├── b54452d522ac4a1191c0f8184546f4a0_usuario.png
+│   │       ├── b6305f771d0e4f9189ede72410286cc1_servidor.png
+│   │       ├── b6305f771d0e4f9189ede72410286cc1_usuario.png
+│   │       ├── b79011fbec674dadbc7113c8ccb0d5d3_servidor.png
+│   │       ├── b79011fbec674dadbc7113c8ccb0d5d3_usuario.png
+│   │       ├── ba6fba95500f4a8f84fe58ef1778d136_servidor.png
+│   │       ├── ba6fba95500f4a8f84fe58ef1778d136_usuario.png
+│   │       ├── bbc4e7581fb94c82844053ac7b04cf46_servidor.png
+│   │       ├── bbc4e7581fb94c82844053ac7b04cf46_usuario.png
+│   │       ├── bcafb47116314450b1e0a9bce9662896_servidor.png
+│   │       ├── bcafb47116314450b1e0a9bce9662896_usuario.png
+│   │       ├── be601aabfd0b4281b7a0882c8cc8dbbd_servidor.png
+│   │       ├── be601aabfd0b4281b7a0882c8cc8dbbd_usuario.png
+│   │       ├── c2eb2ff203714badb0dc4915a5aba521_servidor.png
+│   │       ├── c2eb2ff203714badb0dc4915a5aba521_usuario.png
+│   │       ├── c3594818102f43388938985b0deac318_servidor.png
+│   │       ├── c3594818102f43388938985b0deac318_usuario.png
+│   │       ├── c57ca7178c354a1aa10be8785a242d67_servidor.png
+│   │       ├── c57ca7178c354a1aa10be8785a242d67_usuario.png
+│   │       ├── c685537a5fd04198b698f8e0feef4de3_servidor.png
+│   │       ├── c685537a5fd04198b698f8e0feef4de3_usuario.png
+│   │       ├── c975e04b6e974ec48fdda5ed0842940d_servidor.png
+│   │       ├── c975e04b6e974ec48fdda5ed0842940d_usuario.png
+│   │       ├── cf04e4afffcf4de89da0d24a2861e8e7_servidor.png
+│   │       ├── cf04e4afffcf4de89da0d24a2861e8e7_usuario.png
+│   │       ├── d3a470f732344d76bec7577384bc3ef7_servidor.png
+│   │       ├── d3a470f732344d76bec7577384bc3ef7_usuario.png
+│   │       ├── d54b315f0b2e4def9e5e086ffd009761_servidor.png
+│   │       ├── d54b315f0b2e4def9e5e086ffd009761_usuario.png
+│   │       ├── d57d0a72aa594a83a523bfe4b539392d_servidor.png
+│   │       ├── d57d0a72aa594a83a523bfe4b539392d_usuario.png
+│   │       ├── d8419fac71d3405c822a43f1365c2a7c_servidor.png
+│   │       ├── d8419fac71d3405c822a43f1365c2a7c_usuario.png
+│   │       ├── dacd66ee730d4cc1abbb519a913212a4_servidor.png
+│   │       ├── dacd66ee730d4cc1abbb519a913212a4_usuario.png
+│   │       ├── dafd8027eda84787a67a0fa981345755_servidor.png
+│   │       ├── dafd8027eda84787a67a0fa981345755_usuario.png
+│   │       ├── db58ef3f15324ca8bab1bcc09ae26028_servidor.png
+│   │       ├── db58ef3f15324ca8bab1bcc09ae26028_usuario.png
+│   │       ├── e0886a983db24306bdcacfa5f8dd67e4_servidor.png
+│   │       ├── e0886a983db24306bdcacfa5f8dd67e4_usuario.png
+│   │       ├── e3d0213dbbfc4b13b486053ffb6f4556_servidor.png
+│   │       ├── e3d0213dbbfc4b13b486053ffb6f4556_usuario.png
+│   │       ├── e49dad89f9ac43258f3efa47ae1536c2_servidor.png
+│   │       ├── e49dad89f9ac43258f3efa47ae1536c2_usuario.png
+│   │       ├── e641ea2e46804cd7a8ee08c0cbcc8483_servidor.png
+│   │       ├── e641ea2e46804cd7a8ee08c0cbcc8483_usuario.png
+│   │       ├── e74ed1ea025e4483985d5c0ed17174d0_servidor.png
+│   │       ├── e74ed1ea025e4483985d5c0ed17174d0_usuario.png
+│   │       ├── e7a7cd1e617046429ce8309c8c5cf145_servidor.png
+│   │       ├── e7a7cd1e617046429ce8309c8c5cf145_usuario.png
+│   │       ├── eabc42fb270a4837b22b323f566a56ad_servidor.png
+│   │       ├── eabc42fb270a4837b22b323f566a56ad_usuario.png
+│   │       ├── ecc2fad9e0d346ff9cebe1084a77ce05_servidor.png
+│   │       ├── ecc2fad9e0d346ff9cebe1084a77ce05_usuario.png
+│   │       ├── ecc716f9a2a1460d8a12b8c74dce3ee7_servidor.png
+│   │       ├── ecc716f9a2a1460d8a12b8c74dce3ee7_usuario.png
+│   │       ├── ee32b11f38954ecb93c418c2e9b775ee_servidor.png
+│   │       ├── ee32b11f38954ecb93c418c2e9b775ee_usuario.png
+│   │       ├── f4de972db35e48e5a59654ac250c07aa_servidor.png
+│   │       ├── f4de972db35e48e5a59654ac250c07aa_usuario.png
+│   │       ├── f94fd5c987d34c8fbafe40669b989f9c_servidor.png
+│   │       ├── f94fd5c987d34c8fbafe40669b989f9c_usuario.png
+│   │       ├── f9e34f1302d04f77a1b0a60b0ca964a6_servidor.png
+│   │       ├── f9e34f1302d04f77a1b0a60b0ca964a6_usuario.png
+│   │       ├── fc79de20471c4814b801ca60ec861282_servidor.png
+│   │       ├── fc79de20471c4814b801ca60ec861282_usuario.png
+│   │       ├── fee4805657a74d768957259cab47aeea_servidor.png
+│   │       └── fee4805657a74d768957259cab47aeea_usuario.png
+│   ├── pass_c.sh
+│   └── static
+├── firma_digital
+│   ├── certificado_reporte.pem
+│   ├── consultas_bloqueadas.jsonl
+│   ├── firmas_emitidas.jsonl
+│   ├── llave_privada_reporte.pem
+│   └── llave_publica_reporte.pem
+├── poolling.py
+├── reporte2.py
+├── reporte3.py
+├── reporte4.py
+├── reporte.py
+├── server.py
+└── templates
+    ├── checkin_form.html
+    ├── success.html
+    └── warning.html
+
+14 directories, 512 files

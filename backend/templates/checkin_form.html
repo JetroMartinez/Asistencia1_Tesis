@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registro de Asistencia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body  { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        h1    { color: #333; }
+        form  { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"]   { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input[type="submit"] { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        input[type="submit"]:hover { background-color: #0056b3; }
+        .token-info { margin-top: 20px; font-size: 0.9em; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>Ingresa tus datos para pasar lista</h1>
+    <form method="POST" action="?token={{ token }}">
+        <label for="nombre">Nombre Completo:</label>
+        <input type="text" id="nombre" name="nombre" required><br>
+        
+        <label for="matricula">Matrícula:</label>
+        <input type="text" id="matricula" name="matricula" required><br>
+        
+        <input type="submit" value="Confirmar Asistencia">
+    </form>
+    
+    <div class="token-info">
+        <p>Token de referencia: <code>{{ token }}</code></p>
+    </div>
+</body>
+</html>

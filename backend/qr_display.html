@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asistencia LAN</title>
+    <meta http-equiv="refresh" content="30">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        body {
+            background-color: #111;
+            color: #e5e5e5;
+            font-family: "Inter", Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container-box {
+            background-color: #181818;
+            border: 1px solid #2a2a2a;
+            padding: 40px 50px;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.6);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            margin-bottom: 25px;
+            color: #fff;
+        }
+
+        .label {
+            color: #cfcfcf;
+            font-size: 0.95rem;
+        }
+
+        .token {
+            margin-top: 5px;
+            font-size: 1.7rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        pre {
+            background-color: #101010;
+            border: 1px solid #2d2d2d;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.9rem;
+            color: #d3d3d3;
+            overflow-x: auto;
+        }
+
+        #qrcode {
+            background-color: #fff;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 20px auto;
+            width: fit-content;
+        }
+
+        .note {
+            color: #8e8e8e;
+            font-size: 0.9rem;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container-box">
+    <h1>Escanea el código QR</h1>
+	<p>Registrate en el formulario para pasar lista</p>
+
+    <p class="label" style="display: none">Token actual:</p>
+    <div class="token" style="display: none">{{ token }}</div>
+
+    <p class="label mt-3" style="display: none">URL para escanear:</p>
+    <pre style="display: none">{{ qr_url }}</pre>
+
+    <div id="qrcode"></div>
+
+    <p class="note" style="font-weight: 800">ALMXLVX</p>
+</div>
+
+<script>
+    const qrUrl = "{{ qr_url }}";
+    new QRCode(document.getElementById("qrcode"), {
+        text: qrUrl,
+        width: 240,
+        height: 240,
+        colorDark : "#000",
+        colorLight : "#fff",
+        correctLevel : QRCode.CorrectLevel.H
+    });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+    const socket = io('https://prueba.almxlvx.com');
+    socket.on('new_token_signal', () => window.location.reload());
+</script>
+
+</body>
+</html>
+
