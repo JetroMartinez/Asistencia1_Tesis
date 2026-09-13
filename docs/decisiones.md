@@ -9,6 +9,19 @@ poder defenderse línea por línea ante el jurado.
 
 ## 2026-09-12 — Cierre del hueco de identidad en el canje de asistencia
 
+### Modelo de amenazas
+
+Cuatro perfiles de atacante, su capacidad real, y qué parte del diseño (detallado en
+las secciones siguientes) lo detiene o no. Los mecanismos en sí se explican una sola
+vez en "Decisión"; aquí solo se cruzan contra cada perfil.
+
+| Perfil | Capacidad | Qué lo detiene | Qué no detiene |
+|---|---|---|---|
+| Compañero sin conocimientos técnicos | Conoce o adivina la matrícula de otro alumno (casi información pública en el salón); no programa ni usa herramientas de red | No conoce la contraseña de la cuenta ajena, y aunque la consiguiera, canjear con un dispositivo distinto exige enrolarlo — lo cual desactiva el dispositivo real del dueño y queda registrado | Si la contraseña se comparte voluntariamente, o si alcanza a reclamar la cuenta durante la ventana de exposición del alta (ver "Límites conocidos") |
+| Atacante con `curl` o script directo, sin presencia física ni credenciales | Lee la URL del QR, manda peticiones HTTP arbitrarias, puede intentar fuerza bruta de contraseñas | No tiene ninguna contraseña válida ni la llave privada de ningún dispositivo enrolado — no puede producir ni un `Bearer` ni una `X-SIGNATURE` válidos. El límite de intentos de `/login` frena la fuerza bruta; el candado de un solo uso frena el replay de un token capturado | Nada del canje en sí — este es el perfil para el que está pensado el diseño completo |
+| Dispositivo rooteado (el del propio alumno, u otro comprometido) | Lectura de memoria y almacenamiento del proceso de la app — puede extraer cualquier valor que la app misma pueda leer | La llave privada EC nunca existe como bytes legibles fuera de Keystore [PENDIENTE: citas] — al contrario del secreto HMAC simétrico descartado, que sí sería extraíble así (razón original del cambio de diseño, ver "Alternativas") | Root no impide *usar* la capacidad de firmar mientras la app sigue instalada y autorizada en ese dispositivo (p. ej. mediante instrumentación en tiempo de ejecución) — Keystore protege la extracción del material de la llave, no el uso indebido de la operación de firma desde el mismo dispositivo ya enrolado. Queda como límite residual, no se resuelve en esta tarea |
+| Préstamo consciente con presencia física | Acceso legítimo a una contraseña real y, opcionalmente, al teléfono ya enrolado de otra persona | Nada lo impide técnicamente — ver "Límites conocidos" más abajo para el mecanismo de disuasión con rastro (un dispositivo activo por alumno) | El préstamo en sí; solo se penaliza con la pérdida del enrolamiento propio y quedar registrado, no se bloquea de forma preventiva |
+
 ### Contexto
 
 La sección 5 de `CLAUDE.md` identifica el hueco principal del sistema: el HMAC de
@@ -40,9 +53,10 @@ se guarda en `Alumno.sesion_token_hash` y cada login lo sobrescribe, revocando d
 inmediato cualquier sesión anterior de esa matrícula. Vigencia de punto de partida:
 8 horas.
 
-**Origen del dispositivo (¿desde dónde?):** par de llaves EC P-256 generado dentro de
-Android Keystore, llave privada no exportable. La app firma cada canje
-(`SHA256withECDSA`) con esa llave; el servidor verifica con la llave pública
+**Origen del dispositivo (¿desde dónde?):** par de llaves EC P-256 [PENDIENTE: citas]
+generado dentro de Android Keystore, llave privada no exportable y respaldada por
+hardware [PENDIENTE: citas]. La app firma cada canje (`SHA256withECDSA`)
+[PENDIENTE: citas] con esa llave; el servidor verifica con la llave pública
 registrada (biblioteca `cryptography`, ya dependencia del proyecto por el uso de
 RSA/X.509 en `reporte4.py`). El mensaje firmado es `f"{timestamp}/asistencia:{token_qr}"`
 — incluye la ruta del endpoint, igual convención que ya usa `/get_token`
@@ -179,7 +193,7 @@ implementan en conjunto:
    generación del par de llaves EC en Keystore, registro del dispositivo, firma
    ECDSA de cada canje.
 9. Migración del token de sesión y el desfase de reloj en `UserPrefs.kt` a
-   `EncryptedSharedPreferences`.
+   `EncryptedSharedPreferences` (almacenamiento seguro en móvil) [PENDIENTE: citas].
 10. Restricción de `checkin_form.html`/ruta `/` por navegador (queda bloqueada de
     hecho al exigir `X-SIGNATURE` de dispositivo; conservar una ruta web de respaldo
     documentada es una decisión aparte).
