@@ -1,14 +1,18 @@
 import os
 import uuid
+import secrets
 from   datetime       import datetime
 from   dotenv         import load_dotenv
 from   flask          import Flask, jsonify, request, render_template, make_response
 from   flask_socketio import SocketIO
 from   neo4j          import GraphDatabase
+from   werkzeug.security import check_password_hash, generate_password_hash
 import eventlet
 import hmac
 import hashlib
 import time
+
+import identidad
 
 
 
@@ -22,6 +26,19 @@ S_PORT         = 26998
 app            = Flask(__name__)
 socketio       = SocketIO(app, cors_allowed_origins="*")
 driver         = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+# /login: limite de intentos y sesion (valores de punto de partida, ver docs/decisiones.md)
+UMBRAL_INTENTOS_MATRICULA = 5
+UMBRAL_INTENTOS_IP        = 50
+VENTANA_BLOQUEO_SEGUNDOS  = 15 * 60
+DURACION_BLOQUEO_SEGUNDOS = 15 * 60
+VIGENCIA_SESION_SEGUNDOS  = 8 * 60 * 60
+# Hash señuelo: se verifica contra este aunque la matricula no exista, para que una
+# matricula inexistente no responda mas rapido que una con password incorrecto.
+DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_hex(32))
+
+with driver.session() as session:
+    session.execute_write(identidad.asegurar_esquema_identidad)
 
 
 
@@ -112,6 +129,75 @@ def get_new_token():
         session.execute_write(create_token_record, token)
 
     return jsonify({"token": token}), 200
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    data      = request.get_json(silent=True) or {}
+    matricula = data.get("matricula")
+    password  = data.get("password")
+
+    if not matricula or not password:
+        return jsonify({"error": "Faltan matricula o password"}), 400
+
+    ahora           = time.time()
+    ip_address      = request.remote_addr
+    clave_matricula = f"matricula:{matricula}"
+    clave_ip        = f"ip:{ip_address}"
+
+    with driver.session() as session:
+        bloqueado_matricula = session.execute_read(identidad.esta_bloqueado, clave_matricula, ahora)
+        bloqueado_ip        = session.execute_read(identidad.esta_bloqueado, clave_ip, ahora)
+        if bloqueado_matricula or bloqueado_ip:
+            return jsonify({"error": "Demasiados intentos. Intenta de nuevo mas tarde."}), 429
+
+        alumno            = session.execute_read(identidad.obtener_alumno, matricula)
+        tiene_dispositivo = session.execute_read(identidad.tiene_dispositivo_activo, matricula)
+
+        password_hash          = alumno["password_hash"] if alumno else DUMMY_PASSWORD_HASH
+        credenciales_validas   = alumno is not None and check_password_hash(password_hash, password)
+
+        if not credenciales_validas:
+            conteo_matricula = session.execute_write(
+                identidad.registrar_intento_fallido, clave_matricula, ahora, VENTANA_BLOQUEO_SEGUNDOS
+            )
+            if conteo_matricula >= UMBRAL_INTENTOS_MATRICULA:
+                session.execute_write(
+                    identidad.marcar_bloqueo, clave_matricula, ahora + DURACION_BLOQUEO_SEGUNDOS
+                )
+
+            if not tiene_dispositivo:
+                conteo_ip = session.execute_write(
+                    identidad.registrar_intento_fallido, clave_ip, ahora, VENTANA_BLOQUEO_SEGUNDOS
+                )
+                if conteo_ip >= UMBRAL_INTENTOS_IP:
+                    session.execute_write(
+                        identidad.marcar_bloqueo, clave_ip, ahora + DURACION_BLOQUEO_SEGUNDOS
+                    )
+
+            return jsonify({"error": "Matricula o password incorrectos"}), 401
+
+        session.execute_write(identidad.limpiar_intentos, clave_matricula)
+
+        debe_cambiar_password = alumno["debe_cambiar_password"]
+        alcance                = "cambiar_password" if debe_cambiar_password else "completo"
+        expira_en               = ahora + VIGENCIA_SESION_SEGUNDOS
+
+        secret  = os.getenv("API_SECRET")
+        payload = f"{matricula}.{alcance}.{expira_en}"
+        firma   = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        token   = f"{payload}.{firma}"
+
+        sesion_token_hash = hashlib.sha256(token.encode()).hexdigest()
+        session.execute_write(identidad.establecer_sesion, matricula, sesion_token_hash, expira_en)
+
+    return jsonify({
+        "token":                  token,
+        "alcance":                alcance,
+        "expira_en":              expira_en,
+        "debe_cambiar_password":  debe_cambiar_password,
+        "hora_servidor":          ahora,
+    }), 200
 
 
 @app.route('/', methods=['GET', 'POST'])
