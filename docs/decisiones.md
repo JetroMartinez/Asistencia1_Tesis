@@ -196,3 +196,59 @@ implementan en conjunto:
 10. Restricción de `checkin_form.html`/ruta `/` por navegador (queda bloqueada de
     hecho al exigir `X-SIGNATURE` de dispositivo; conservar una ruta web de respaldo
     documentada es una decisión aparte).
+
+---
+
+## 2026-09-16 — Almacenamiento de contraseñas
+
+### Decisión
+
+El hash de contraseñas usa `werkzeug.security.generate_password_hash` /
+`check_password_hash`, ya en uso en el proyecto antes de esta tarea: lo llama
+`backend/scripts/sembrar_identidad.py` al generar el `password_hash` de cada
+`Alumno` sintético, y ya lo usaba `backend/firma_calificaciones/app.py` para
+verificar la contraseña del panel de firma de calificaciones
+(`check_password_hash(ADMIN_PASSWORD_HASH, password)`, línea 1160).
+
+Ninguna de las dos llamadas pasa el argumento `method`, así que ambas quedan en el
+algoritmo por omisión de la versión instalada. Se verificó la versión real
+instalada — **no la de `backend/requirements.txt`, ver "Nota" abajo** — en
+`/home/jetromtz/Asistencia1_Tesis/.venv/lib/python3.14/site-packages/werkzeug-3.1.8.dist-info`:
+**Werkzeug 3.1.8**. Se leyó directamente `werkzeug/security.py` de esa instalación:
+desde Werkzeug 2.3 el default de `generate_password_hash` es **scrypt**
+(`n=32768, r=8, p=1`), no PBKDF2 — versiones anteriores a la 2.3 usaban PBKDF2 por
+omisión, así que fijar la versión real importa para no describir un algoritmo que
+el código no está usando.
+
+### Por qué Werkzeug y no `passlib` / `bcrypt` / `argon2`
+
+No fue una comparación criptográfica desde cero: Werkzeug ya es dependencia
+transitiva de Flask (cero dependencias nuevas que justificar ante el jurado), y
+`werkzeug.security` ya estaba en uso en `firma_calificaciones/app.py` antes de que
+existiera esta decisión, así que extender el mismo módulo a `sembrar_identidad.py`
+mantiene un solo mecanismo de hash en todo el proyecto en lugar de dos.
+
+### Limitación
+
+Scrypt con los parámetros por omisión de Werkzeug es una opción razonable, pero
+OWASP recomienda Argon2id por delante de scrypt como primera opción para hash de
+contraseñas nuevas. Además, `check_password_hash` no señala si un hash quedó
+desactualizado (por ejemplo, tras subir los parámetros de costo en una versión
+futura de Werkzeug), por lo que no hay una ruta de re-hash automático al iniciar
+sesión; y el esquema no soporta *pepper* (un secreto adicional guardado fuera de la
+base de datos). Ninguna de las cuentas creadas hasta ahora es de un alumno real
+(ver sección 6 de `CLAUDE.md`), así que esta limitación no expone datos reales
+todavía, pero debe resolverse o quedar explícitamente aceptada antes de sembrar
+cuentas con matrículas reales.
+
+### Nota: `backend/requirements.txt` no fija esta dependencia
+
+Al verificar la versión, se encontró que `backend/requirements.txt` no lista Flask
+ni Werkzeug — su contenido (`Glances`, `ufw`, `nftables`, `btrfsutil`, `pyalpm`,
+`VapourSynth`, entre otros) corresponde a paquetes del Python de sistema de
+CachyOS, no a un entorno virtual propio del proyecto. La versión citada arriba se
+verificó contra el `.venv` real del proyecto, no contra ese archivo. Esto es una
+limitación de trazabilidad de dependencias — no se corrige aquí porque excede el
+alcance de esta tarea, pero queda anotado porque cualquier medición o defensa que
+cite versiones de paquetes a partir de `requirements.txt` hoy partiría de un dato
+incorrecto.
