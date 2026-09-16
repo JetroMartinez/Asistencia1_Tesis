@@ -272,7 +272,14 @@ hallazgo válido de la tesis.
 - [x] Carga de listas en Excel y certificados firmados
 
 ### Pendiente
-- [ ] Registro de dispositivo y canje de token autenticado (PRIORIDAD 1)
+- [ ] Nodos Alumno, Dispositivo y BloqueoLogin en Neo4j + script de siembra
+- [ ] POST /login con límite de intentos, hora_servidor y token de alcance limitado
+- [ ] POST /cambiar_password
+- [ ] POST /dispositivos/registrar
+- [ ] Verificación ECDSA en process_checkin
+- [ ] Registro de todo intento rechazado
+- [ ] Android: login, Keystore, firma del canje, EncryptedSharedPreferences
+- [ ] Alta de cuentas desde Excel 
 - [ ] Cerrar o restringir el flujo web de registro
 - [ ] Quitar `debug=True` de `visor.py`
 - [ ] Restringir CORS de Socket.IO
