@@ -63,6 +63,14 @@ def establecer_sesion(tx: ManagedTransaction, matricula: str,
            sesion_expira_en=sesion_expira_en)
 
 
+def invalidar_sesion(tx: ManagedTransaction, matricula: str) -> None:
+    # Se llama tras cambiar la contrasena para que el token de alcance
+    # limitado deje de servir incluso antes de expirar, y fuerce login nuevo.
+    query = ("MATCH (a:Alumno {matricula: $matricula}) "
+              "SET a.sesion_token_hash = null, a.sesion_expira_en = null")
+    tx.run(query, matricula=matricula)
+
+
 # ---------------------------------------------------------------------------
 # Dispositivo
 # ---------------------------------------------------------------------------

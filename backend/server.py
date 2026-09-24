@@ -33,6 +33,10 @@ UMBRAL_INTENTOS_IP        = 50
 VENTANA_BLOQUEO_SEGUNDOS  = 15 * 60
 DURACION_BLOQUEO_SEGUNDOS = 15 * 60
 VIGENCIA_SESION_SEGUNDOS  = 8 * 60 * 60
+# Minimo recomendado por NIST SP 800-63B para contrasenas elegidas por el
+# usuario (no aplica el mismo criterio que el codigo inicial aleatorio de
+# sembrar_identidad.py, que usa alfabeto amplio) [PENDIENTE: citas]
+LONGITUD_MINIMA_PASSWORD  = 12
 # Hash señuelo: se verifica contra este aunque la matricula no exista, para que una
 # matricula inexistente no responda mas rapido que una con password incorrecto.
 DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_hex(32))
@@ -198,6 +202,72 @@ def login():
         "debe_cambiar_password":  debe_cambiar_password,
         "hora_servidor":          ahora,
     }), 200
+
+
+def verificar_token_sesion(token, alcance_requerido):
+    """Verifica un token de sesion de /login. Devuelve (matricula, None) si es
+    valido para alcance_requerido, o (None, (mensaje, status)) si no."""
+    if not token:
+        return None, ("Falta el token de sesion", 401)
+
+    try:
+        payload, firma_recibida = token.rsplit(".", 1)
+        matricula, alcance, expira_en_str = payload.split(".", 2)
+        expira_en = float(expira_en_str)
+    except ValueError:
+        return None, ("Token con formato invalido", 401)
+
+    secret = os.getenv("API_SECRET")
+    firma_esperada = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(firma_recibida, firma_esperada):
+        return None, ("Firma invalida", 401)
+
+    if time.time() > expira_en:
+        return None, ("Token expirado", 401)
+
+    if alcance != alcance_requerido:
+        return None, ("Alcance insuficiente para este endpoint", 403)
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    with driver.session() as session:
+        alumno = session.execute_read(identidad.obtener_alumno, matricula)
+
+    if not alumno or alumno.get("sesion_token_hash") != token_hash:
+        return None, ("Sesion invalida o revocada", 401)
+
+    return matricula, None
+
+
+@app.route('/cambiar_password', methods=['POST'])
+def cambiar_password():
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Falta encabezado Authorization Bearer"}), 401
+    token = auth_header[len("Bearer "):]
+
+    matricula, error = verificar_token_sesion(token, "cambiar_password")
+    if error:
+        mensaje, status = error
+        return jsonify({"error": mensaje}), status
+
+    data           = request.get_json(silent=True) or {}
+    password_nuevo = data.get("password_nuevo")
+
+    if not password_nuevo or len(password_nuevo) < LONGITUD_MINIMA_PASSWORD:
+        return jsonify({
+            "error": f"La contrasena debe tener al menos {LONGITUD_MINIMA_PASSWORD} caracteres"
+        }), 400
+
+    with driver.session() as session:
+        alumno = session.execute_read(identidad.obtener_alumno, matricula)
+        if check_password_hash(alumno["password_hash"], password_nuevo):
+            return jsonify({"error": "La contrasena nueva no puede ser igual a la actual"}), 400
+
+        password_hash = generate_password_hash(password_nuevo)
+        session.execute_write(identidad.actualizar_password, matricula, password_hash)
+        session.execute_write(identidad.invalidar_sesion, matricula)
+
+    return jsonify({"mensaje": "Contrasena actualizada. Inicia sesion de nuevo."}), 200
 
 
 @app.route('/', methods=['GET', 'POST'])
