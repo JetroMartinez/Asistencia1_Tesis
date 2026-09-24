@@ -252,3 +252,54 @@ limitación de trazabilidad de dependencias — no se corrige aquí porque exced
 alcance de esta tarea, pero queda anotado porque cualquier medición o defensa que
 cite versiones de paquetes a partir de `requirements.txt` hoy partiría de un dato
 incorrecto.
+
+---
+
+## 2026-09-23 — Límite verificado: sin cambio voluntario de contraseña tras el primero obligatorio
+
+### Contexto
+
+Extiende la decisión de identidad del 2026-09-12: `POST /login` emite `alcance`
+según `debe_cambiar_password` (`server.py`, línea 187) — `"cambiar_password"`
+mientras esté en `true`, `"completo"` en cuanto pasa a `false`. `verificar_token_sesion`
+exige coincidencia exacta de alcance (`alcance != alcance_requerido`, línea 228), y
+`POST /cambiar_password` llama a esa verificación pidiendo literalmente
+`"cambiar_password"` (línea 248), sin aceptar `"completo"` como alternativa.
+
+### Verificación empírica (curl, 2026-09-23, matrícula sintética SIM0001)
+
+1. `POST /login` con la contraseña inicial → responde `alcance: "cambiar_password"`.
+2. `POST /cambiar_password` con ese token → `200`, contraseña actualizada,
+   `invalidar_sesion` revoca el token usado.
+3. `POST /login` de nuevo, ya con la contraseña nueva → responde
+   `alcance: "completo"`, `debe_cambiar_password: false`.
+4. `POST /cambiar_password` con el token de alcance `"completo"` → `403`:
+
+   ```
+   {"error":"Alcance insuficiente para este endpoint"}
+   ```
+
+### Consecuencia
+
+Tras el primer cambio obligatorio, el alumno no tiene forma de cambiar su
+contraseña por voluntad propia: todo intento contra `/cambiar_password` con una
+sesión normal (`alcance: "completo"`) se rechaza con `403`. Esto se suma al límite
+ya aceptado el 2026-09-12 ("Sin recuperación de contraseña") — ahora ni siquiera
+existe la ruta de cambio voluntario sin haber olvidado nada, solo la del cambio
+forzoso del primer login.
+
+### Fuera de alcance
+
+Por el congelamiento de código del 12 de octubre de 2026 (sección 1 de
+`CLAUDE.md`), no se implementa aquí. Queda como trabajo futuro documentado, no
+como fallo oculto.
+
+### Solución propuesta (no implementada)
+
+Aceptar también `alcance == "completo"` en `/cambiar_password`, exigiendo en ese
+caso la contraseña actual en el cuerpo de la petición y verificándola con
+`check_password_hash` antes de aplicar el cambio — igual que ya hace el propio
+endpoint para rechazar que la contraseña nueva sea igual a la actual (línea 259).
+Así el cambio voluntario queda autenticado por posesión de la contraseña vigente,
+no solo por el alcance del token, y no se abre una puerta para que un token de
+sesión robado cambie la contraseña sin conocerla.
