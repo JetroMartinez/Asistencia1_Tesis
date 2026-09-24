@@ -11,6 +11,11 @@ import eventlet
 import hmac
 import hashlib
 import time
+import base64
+import binascii
+from   cryptography.exceptions                  import UnsupportedAlgorithm
+from   cryptography.hazmat.primitives            import serialization
+from   cryptography.hazmat.primitives.asymmetric import ec
 
 import identidad
 
@@ -37,6 +42,8 @@ VIGENCIA_SESION_SEGUNDOS  = 8 * 60 * 60
 # usuario (no aplica el mismo criterio que el codigo inicial aleatorio de
 # sembrar_identidad.py, que usa alfabeto amplio) [PENDIENTE: citas]
 LONGITUD_MINIMA_PASSWORD  = 12
+# /dispositivos/registrar: tope para no guardar cadenas arbitrarias en el grafo
+LONGITUD_MAXIMA_HUELLA    = 256
 # Hash señuelo: se verifica contra este aunque la matricula no exista, para que una
 # matricula inexistente no responda mas rapido que una con password incorrecto.
 DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_hex(32))
@@ -268,6 +275,72 @@ def cambiar_password():
         session.execute_write(identidad.invalidar_sesion, matricula)
 
     return jsonify({"mensaje": "Contrasena actualizada. Inicia sesion de nuevo."}), 200
+
+
+def cargar_llave_publica_p256(texto: str) -> ec.EllipticCurvePublicKey | None:
+    """Acepta PEM o DER base64 (formato de publicKey.encoded en Android Keystore).
+    Devuelve la llave solo si es EC sobre P-256; None en cualquier otro caso."""
+    try:
+        if texto.lstrip().startswith("-----BEGIN"):
+            llave = serialization.load_pem_public_key(texto.encode())
+        else:
+            llave = serialization.load_der_public_key(base64.b64decode(texto, validate=True))
+    except (ValueError, binascii.Error, UnsupportedAlgorithm):
+        # OpenSSL rechaza aqui tambien los puntos que no estan sobre la curva
+        return None
+
+    if not isinstance(llave, ec.EllipticCurvePublicKey):
+        return None
+    if not isinstance(llave.curve, ec.SECP256R1):
+        return None
+    return llave
+
+
+@app.route('/dispositivos/registrar', methods=['POST'])
+def registrar_dispositivo():
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Falta encabezado Authorization Bearer"}), 401
+    token = auth_header[len("Bearer "):]
+
+    matricula, error = verificar_token_sesion(token, "completo")
+    if error:
+        mensaje, status = error
+        return jsonify({"error": mensaje}), status
+
+    data               = request.get_json(silent=True) or {}
+    llave_texto        = data.get("llave_publica")
+    huella_dispositivo = data.get("huella_dispositivo")
+
+    if not isinstance(llave_texto, str) or not llave_texto:
+        return jsonify({"error": "Falta llave_publica"}), 400
+    if not isinstance(huella_dispositivo, str) or not huella_dispositivo:
+        return jsonify({"error": "Falta huella_dispositivo"}), 400
+    if len(huella_dispositivo) > LONGITUD_MAXIMA_HUELLA:
+        return jsonify({
+            "error": f"huella_dispositivo excede {LONGITUD_MAXIMA_HUELLA} caracteres"
+        }), 400
+
+    llave = cargar_llave_publica_p256(llave_texto)
+    if llave is None:
+        return jsonify({
+            "error": "La llave debe ser una llave publica EC P-256 (PEM o DER base64)"
+        }), 400
+
+    # Se guarda siempre normalizada a PEM SubjectPublicKeyInfo, para que la
+    # verificacion ECDSA del canje lea un solo formato.
+    formato   = serialization.PublicFormat.SubjectPublicKeyInfo
+    llave_pem = llave.public_bytes(serialization.Encoding.PEM, formato).decode()
+    llave_der = llave.public_bytes(serialization.Encoding.DER, formato)
+
+    with driver.session() as session:
+        session.execute_write(identidad.registrar_dispositivo, matricula, llave_pem,
+                              huella_dispositivo)
+
+    return jsonify({
+        "mensaje":      "Dispositivo registrado. El dispositivo anterior quedo desactivado.",
+        "huella_llave": hashlib.sha256(llave_der).hexdigest()[:16],
+    }), 201
 
 
 @app.route('/', methods=['GET', 'POST'])

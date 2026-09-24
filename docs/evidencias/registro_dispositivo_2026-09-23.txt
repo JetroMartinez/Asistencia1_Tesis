@@ -1,0 +1,21 @@
+# POST /dispositivos/registrar — python tests/probar_registro_dispositivo.py
+# 2026-09-23T20:57:43-06:00, commit base c44626b + cambios del punto 3, alumno sintetico SIM0001
+
+OK  token de alcance cambiar_password: esperado 403, obtenido 403 {'error': 'Alcance insuficiente para este endpoint'}
+OK  sin token: esperado 401, obtenido 401 {'error': 'Falta encabezado Authorization Bearer'}
+OK  token con firma alterada: esperado 401, obtenido 401 {'error': 'Firma invalida'}
+OK  P-256 en PEM: esperado 201, obtenido 201 {'huella_llave': '40c0584d07f210aa', 'mensaje': 'Dispositivo registrado. El dispositivo anterior quedo desactivado.'}
+OK  P-256 en DER base64: esperado 201, obtenido 201 {'huella_llave': '98da3b07f5153371', 'mensaje': 'Dispositivo registrado. El dispositivo anterior quedo desactivado.'}
+OK  el anterior queda activo=false y solo hay un activo, normalizado a PEM
+OK  P-384: esperado 400, obtenido 400 {'error': 'La llave debe ser una llave publica EC P-256 (PEM o DER base64)'}
+OK  RSA 2048: esperado 400, obtenido 400 {'error': 'La llave debe ser una llave publica EC P-256 (PEM o DER base64)'}
+OK  Ed25519: esperado 400, obtenido 400 {'error': 'La llave debe ser una llave publica EC P-256 (PEM o DER base64)'}
+OK  base64 corrupto: esperado 400, obtenido 400 {'error': 'La llave debe ser una llave publica EC P-256 (PEM o DER base64)'}
+OK  PEM truncado: esperado 400, obtenido 400 {'error': 'La llave debe ser una llave publica EC P-256 (PEM o DER base64)'}
+OK  llave no string: esperado 400, obtenido 400 {'error': 'Falta llave_publica'}
+OK  falta huella: esperado 400, obtenido 400 {'error': 'Falta huella_dispositivo'}
+OK  huella de 257 caracteres: esperado 400, obtenido 400 {'error': 'huella_dispositivo excede 256 caracteres'}
+OK  cuerpo no JSON: esperado 400, obtenido 400 {'error': 'Falta llave_publica'}
+OK  P-256 con punto fuera de la curva: esperado 400, obtenido 400 {'error': 'La llave debe ser una llave publica EC P-256 (PEM o DER base64)'}
+OK  los rechazos no cambiaron el dispositivo activo
+17/17 verificaciones correctas

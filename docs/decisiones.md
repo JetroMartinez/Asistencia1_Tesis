@@ -303,3 +303,66 @@ endpoint para rechazar que la contraseña nueva sea igual a la actual (línea 25
 Así el cambio voluntario queda autenticado por posesión de la contraseña vigente,
 no solo por el alcance del token, y no se abre una puerta para que un token de
 sesión robado cambie la contraseña sin conocerla.
+
+---
+
+## 2026-09-23 — `POST /dispositivos/registrar` (punto de cambio 3)
+
+### Decisión
+
+El endpoint exige `Authorization: Bearer` con `verificar_token_sesion(token, "completo")`:
+un token de alcance `"cambiar_password"` recibe `403`, así que no se puede enrolar un
+dispositivo antes del cambio obligatorio de contraseña. El cuerpo JSON trae
+`llave_publica` y `huella_dispositivo`; la escritura la hace
+`identidad.registrar_dispositivo`, que en una sola transacción desactiva el
+`Dispositivo` activo anterior y crea el nuevo.
+
+**Validación de la llave antes de guardarla** (`cargar_llave_publica_p256`, con
+`cryptography`, ya dependencia por `reporte4.py`): se acepta PEM o DER en base64
+estricto (`b64decode(..., validate=True)`). DER base64 es el formato natural de la
+app, porque `KeyStore` entrega `publicKey.encoded` como DER X.509
+SubjectPublicKeyInfo. La llave solo se acepta si es `EllipticCurvePublicKey` sobre
+`SECP256R1`; RSA, Ed25519, otras curvas (p. ej. P-384), base64 o PEM corruptos y
+puntos que no están sobre la curva (OpenSSL los rechaza al cargar) responden `400`.
+`huella_dispositivo` es obligatoria y tiene un tope de 256 caracteres, para no
+guardar cadenas arbitrarias en el grafo.
+
+**Normalización:** la llave se guarda siempre re-serializada como PEM
+SubjectPublicKeyInfo, llegue como llegue. Así la verificación ECDSA del canje (punto
+de cambio 4) lee un solo formato y la misma llave no queda en Neo4j con dos
+representaciones distintas. La respuesta `201` incluye `huella_llave` (los primeros
+16 caracteres hexadecimales de SHA-256 del DER) para que la app y los registros
+puedan confirmar qué llave quedó enrolada sin devolverla completa.
+
+**Diff aditivo:** no se modificaron `process_checkin`, `/get_token`, las funciones
+de `Token` ni `identidad.py`. La lectura del `Bearer` se duplicó (4 líneas) en vez
+de extraerse a una función común, porque extraerla obligaba a modificar
+`/cambiar_password`.
+
+### Verificación
+
+`backend/tests/probar_registro_dispositivo.py`, con el `test_client` de Flask contra
+el Neo4j real y el alumno sintético SIM0001. La salida está en
+`docs/evidencias/registro_dispositivo_2026-09-23.txt`: 17/17 verificaciones correctas,
+incluyendo que el dispositivo anterior queda `activo: false`, que solo queda uno
+activo y que los rechazos no alteran el dispositivo activo. El script emite el token
+de sesión con el mismo formato que `/login` en lugar de llamar a `/login`, porque la
+contraseña de SIM0001 se cambió en la verificación del 2026-09-23; la verificación de
+firma, expiración, alcance y sesión vigente sí se ejercita completa.
+
+### Límites conocidos
+
+- **Los rechazos no se registran todavía.** Los `400`/`401`/`403` de este endpoint
+  aún no dejan rastro; eso corresponde al punto de cambio 7.
+- **Carrera entre dos registros simultáneos de la misma matrícula:** bajo aislamiento
+  *read committed* de Neo4j, dos transacciones concurrentes pueden desactivar cada una
+  solo el dispositivo activo que ven y crear cada una el suyo, dejando dos
+  `Dispositivo` activos. Solo ocurre si el mismo alumno enrola dos veces en el mismo
+  instante; cerrarlo requiere tocar `identidad.registrar_dispositivo` (p. ej. tomar
+  primero un candado de escritura sobre el nodo `Alumno`). Queda como trabajo futuro.
+- **Una misma llave pública enrolada por dos matrículas distintas no se bloquea.**
+  Es una señal de proxy, coherente con el principio de "señal, no bloqueo": queda
+  para las reglas de anomalía de la sección 9 de `CLAUDE.md`.
+- **Corrección del esquema del 2026-09-12:** `identidad.registrar_dispositivo`
+  guarda también `huella_dispositivo` en el nodo; el esquema real es
+  `(:Dispositivo {llave_publica, huella_dispositivo, creado_en, activo})`.
