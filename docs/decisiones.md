@@ -366,3 +366,83 @@ firma, expiración, alcance y sesión vigente sí se ejercita completa.
 - **Corrección del esquema del 2026-09-12:** `identidad.registrar_dispositivo`
   guarda también `huella_dispositivo` en el nodo; el esquema real es
   `(:Dispositivo {llave_publica, huella_dispositivo, creado_en, activo})`.
+
+---
+
+## 2026-09-24 — Canje autenticado en `process_checkin` (punto de cambio 4)
+
+### Decisión
+
+El `POST` de `process_checkin` (ruta `/?token=...`) ahora pasa por
+`verificar_canje(token_qr)` **antes** de cualquier consulta al nodo `Token`. En orden:
+
+1. `Authorization: Bearer` con `verificar_token_sesion(token, "completo")`, reutilizada
+   sin cambios (401 sin sesión o sesión revocada/expirada, 403 con alcance
+   `"cambiar_password"`).
+2. `X-TIMESTAMP` (entero, igual que `/get_token`) dentro de ±60 s
+   (`VENTANA_CANJE_SEGUNDOS`), por el desfase de reloj del teléfono ya justificado el
+   2026-09-12.
+3. `X-SIGNATURE`: firma ECDSA con SHA-256 sobre `f"{timestamp}/asistencia:{token_qr}"`,
+   verificada contra la llave pública del `Dispositivo` activo del alumno
+   (`identidad.obtener_dispositivo_activo`, ya existente). Sin dispositivo activo → 403;
+   firma inválida o base64 corrupto → 401.
+4. Solo si todo pasa, continúa la lógica de siempre (`get_token_status`,
+   `increment_token_warnings`, `update_token_used`, señal `new_token_signal`), con
+   `nombre` y `matricula` tomados del nodo `Alumno` de la sesión autenticada. Lo que
+   venga en `request.form` se ignora.
+
+**Formato de la firma:** DER en base64, que es exactamente lo que devuelve
+`Signature.getInstance("SHA256withECDSA").sign()` en Android, así la app no tiene que
+convertir a formato `r||s`. La llave se lee en PEM porque `/dispositivos/registrar` la
+guarda ya normalizada.
+
+**Por qué la verificación va antes de `get_token_status`:** un `POST` rechazado no
+consume el token ni incrementa `warnings`. Así `warnings` sigue significando lo mismo
+que antes (reintentos sobre un token ya canjeado) y un atacante sin credenciales no
+puede inflar ese contador ni "quemar" el QR que está proyectado.
+
+**Diff sobre `process_checkin`:** un bloque de 6 líneas antes de `# Token status` y dos
+líneas en la rama `POST` (`nombre`/`matricula` salen de `alumno` en lugar de
+`request.form`). No se modificaron las funciones de `Token`, la rama `GET`, la cookie
+ni la emisión por Socket.IO. Los errores de autenticación responden JSON, como el
+resto de los endpoints de identidad, porque el cliente es la app.
+
+### Verificación
+
+`backend/tests/probar_canje_firmado.py` (test_client de Flask, Neo4j real, alumno
+sintético SIM0001). Genera una llave P-256 local, la enrola por
+`/dispositivos/registrar` y firma igual que Keystore. Salida en
+`docs/evidencias/canje_firmado_2026-09-24.txt`: 8/8 verificaciones correctas.
+
+| Caso | Resultado | Estado del token |
+|---|---|---|
+| Navegador: solo formulario, sin encabezados | 401 | sin usar, `warnings=0` |
+| `curl` con sesión válida y sin `X-SIGNATURE` | 401 | sin usar, `warnings=0` |
+| Firma de otra llave P-256 no enrolada | 401 | sin usar, `warnings=0` |
+| Timestamp −120 s con firma correcta | 401 | sin usar, `warnings=0` |
+| Firma válida de otro `token_qr` | 401 | sin usar, `warnings=0` |
+| Firma válida, formulario con nombre/matrícula falsos | 200 | usado, con la matrícula y el nombre de la sesión |
+| Replay exacto de la petición anterior | 200 (`warning.html`) | `warnings=1`, registro sin cambios |
+
+El script borra al terminar los nodos `Token` que creó, para no mezclar datos de prueba
+con el conjunto de datos de la tesis. La regresión de
+`probar_registro_dispositivo.py` sigue en 17/17.
+
+### Límites conocidos
+
+- **Los rechazos todavía no se registran:** los 401/403 del canje no dejan rastro en
+  Neo4j. Corresponde al punto de cambio 7, y es necesario para las métricas de
+  detección de la sección 9 de `CLAUDE.md`.
+- **La rama `GET` sigue sirviendo `checkin_form.html`:** su envío ahora recibe 401, así
+  que el flujo web está bloqueado en la práctica. Retirarlo o conservarlo como respaldo
+  documentado es el punto de cambio 10.
+- **El replay dentro de la ventana de 60 s no se bloquea criptográficamente:** una
+  firma capturada solo sirve para ese mismo `token_qr`, y ese token ya se canjeó, así
+  que el replay cae en la lógica de un solo uso y cuenta como `warning`. No se
+  agregó un registro de nonces porque el candado de un solo uso del token ya cumple
+  esa función.
+- **Uso indebido de la firma desde un dispositivo rooteado ya enrolado:** sin cambios
+  respecto al modelo de amenazas del 2026-09-12. Keystore impide extraer la llave, no
+  impide usarla.
+- **`ruff` no está instalado** en el entorno del proyecto; el formato del código nuevo
+  no se verificó con esa herramienta.

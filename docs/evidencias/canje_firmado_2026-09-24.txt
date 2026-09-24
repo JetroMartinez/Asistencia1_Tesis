@@ -1,0 +1,14 @@
+# Salida de backend/tests/probar_canje_firmado.py — 2026-09-24T10:19:42-06:00
+# Datos sinteticos (SIM0001), Neo4j local, test_client de Flask
+
+OK  preparacion: enrolar llave P-256 local, obtenido 201
+OK  navegador: solo formulario, sin encabezados: esperado 401 sin tocar el token, obtenido 401 {'error': 'Falta encabezado Authorization Bearer'} used=False warnings=0
+OK  curl con sesion valida y sin X-SIGNATURE: esperado 401 sin tocar el token, obtenido 401 {'error': 'Faltan encabezados X-TIMESTAMP o X-SIGNATURE'} used=False warnings=0
+OK  firma de otra llave P-256 no enrolada: esperado 401 sin tocar el token, obtenido 401 {'error': 'Firma de dispositivo invalida'} used=False warnings=0
+OK  timestamp fuera de ventana (-120 s), firma correcta: esperado 401 sin tocar el token, obtenido 401 {'error': 'Timestamp fuera de la ventana permitida'} used=False warnings=0
+OK  firma valida de token_b enviada al canje de token_a: esperado 401 sin tocar el token, obtenido 401 {'error': 'Firma de dispositivo invalida'} used=False warnings=0
+Señal socket enviada a PC1
+OK  firma valida (formulario con datos falsos): obtenido 200, {'used': True, 'warnings': 0, 'matricula': 'SIM0001', 'nombre': 'Alumno Sintetico 01'}
+OK  replay exacto del mismo token_qr: cuenta como reintento y no reescribe el registro, obtenido 200, {'used': True, 'warnings': 1, 'matricula': 'SIM0001', 'nombre': 'Alumno Sintetico 01'}
+
+8/8 verificaciones correctas

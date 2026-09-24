@@ -13,8 +13,8 @@ import hashlib
 import time
 import base64
 import binascii
-from   cryptography.exceptions                  import UnsupportedAlgorithm
-from   cryptography.hazmat.primitives            import serialization
+from   cryptography.exceptions                  import InvalidSignature, UnsupportedAlgorithm
+from   cryptography.hazmat.primitives            import hashes, serialization
 from   cryptography.hazmat.primitives.asymmetric import ec
 
 import identidad
@@ -44,6 +44,9 @@ VIGENCIA_SESION_SEGUNDOS  = 8 * 60 * 60
 LONGITUD_MINIMA_PASSWORD  = 12
 # /dispositivos/registrar: tope para no guardar cadenas arbitrarias en el grafo
 LONGITUD_MAXIMA_HUELLA    = 256
+# Canje: 60 s (no 30 como /get_token) porque X-TIMESTAMP lo genera el telefono
+# del alumno, sin NTP garantizado (ver desfase de reloj en docs/decisiones.md)
+VENTANA_CANJE_SEGUNDOS    = 60
 # Hash señuelo: se verifica contra este aunque la matricula no exista, para que una
 # matricula inexistente no responda mas rapido que una con password incorrecto.
 DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_hex(32))
@@ -343,6 +346,51 @@ def registrar_dispositivo():
     }), 201
 
 
+def verificar_canje(token_qr):
+    """Verifica sesion completa y firma ECDSA del dispositivo activo sobre
+    f"{timestamp}/asistencia:{token_qr}". Devuelve (alumno, None) si pasa,
+    o (None, (mensaje, status)) si no."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None, ("Falta encabezado Authorization Bearer", 401)
+
+    matricula, error = verificar_token_sesion(auth_header[len("Bearer "):], "completo")
+    if error:
+        return None, error
+
+    timestamp = request.headers.get("X-TIMESTAMP")
+    firma_b64 = request.headers.get("X-SIGNATURE")
+    if not timestamp or not firma_b64:
+        return None, ("Faltan encabezados X-TIMESTAMP o X-SIGNATURE", 401)
+
+    try:
+        timestamp = int(timestamp)
+    except ValueError:
+        return None, ("Timestamp invalido", 401)
+
+    if abs(int(time.time()) - timestamp) > VENTANA_CANJE_SEGUNDOS:
+        return None, ("Timestamp fuera de la ventana permitida", 401)
+
+    with driver.session() as session:
+        alumno      = session.execute_read(identidad.obtener_alumno, matricula)
+        dispositivo = session.execute_read(identidad.obtener_dispositivo_activo, matricula)
+
+    if not dispositivo:
+        return None, ("No hay un dispositivo activo registrado para esta matricula", 403)
+
+    # La llave se guardo normalizada a PEM en /dispositivos/registrar. La firma
+    # llega en DER base64, el formato de Signature("SHA256withECDSA") en Android.
+    llave   = serialization.load_pem_public_key(dispositivo["llave_publica"].encode())
+    mensaje = f"{timestamp}/asistencia:{token_qr}".encode()
+    try:
+        llave.verify(base64.b64decode(firma_b64, validate=True), mensaje,
+                     ec.ECDSA(hashes.SHA256()))
+    except (InvalidSignature, binascii.Error, ValueError):
+        return None, ("Firma de dispositivo invalida", 401)
+
+    return alumno, None
+
+
 @app.route('/', methods=['GET', 'POST'])
 def process_checkin():
     token = request.args.get('token')
@@ -356,6 +404,13 @@ def process_checkin():
     user_cookie = request.cookies.get('user_tracker')
     if not user_cookie:
         user_cookie = uuid.uuid4().hex
+
+    # Identidad y origen del dispositivo (punto de cambio 4, docs/decisiones.md)
+    if request.method == 'POST':
+        alumno, error = verificar_canje(token)
+        if error:
+            mensaje, status = error
+            return jsonify({"error": mensaje}), status
 
     # Token status
     with driver.session() as session:
@@ -378,8 +433,8 @@ def process_checkin():
 
         # Process the forms with POST
         elif request.method == 'POST':
-            nombre    = request.form.get('nombre')
-            matricula = request.form.get('matricula')
+            nombre    = alumno['nombre']
+            matricula = alumno['matricula']
 
             if not nombre or not matricula:
                 return "Error: Faltan nombre o matrícula.", 400
