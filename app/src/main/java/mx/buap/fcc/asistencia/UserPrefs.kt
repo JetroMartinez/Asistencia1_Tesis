@@ -1,4 +1,4 @@
-package com.example.asistencia   // ← IMPORTANTE: usa EXACTAMENTE este package
+package mx.buap.fcc.asistencia   // ← IMPORTANTE: usa EXACTAMENTE este package
 
 import android.content.Context
 

@@ -1,4 +1,4 @@
-package com.example.asistencia.ui.theme
+package mx.buap.fcc.asistencia.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

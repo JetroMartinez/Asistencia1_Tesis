@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.asistencia"
+    namespace = "mx.buap.fcc.asistencia"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.asistencia1"
+        applicationId = "mx.buap.fcc.asistencia"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

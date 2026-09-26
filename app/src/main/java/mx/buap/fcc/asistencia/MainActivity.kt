@@ -1,11 +1,11 @@
-package com.example.asistencia
+package mx.buap.fcc.asistencia
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import com.example.asistencia.ui.theme.Asistencia1Theme
+import mx.buap.fcc.asistencia.ui.theme.Asistencia1Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,4 +1,4 @@
-package com.example.asistencia
+package mx.buap.fcc.asistencia
 
 import android.Manifest
 import android.annotation.SuppressLint
