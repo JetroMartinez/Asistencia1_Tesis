@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
+   Reglas de respaldo para API <= 30.
+   La sesion cifrada no se respalda: su llave maestra vive en Android Keystore y no
+   viaja con el respaldo, asi que restaurarla solo produciria un archivo ilegible.
    See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="sharedpref" path="sesion_cifrada.xml" />
 </full-backup-content>
