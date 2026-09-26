@@ -19,7 +19,13 @@ android {
     }
 
     buildTypes {
+        // La app solo habla con BASE_URL; nunca con una URL leida del QR.
+        debug {
+            // Servidor local expuesto con: adb reverse tcp:26998 tcp:26998
+            buildConfigField("String", "BASE_URL", "\"http://localhost:26998\"")
+        }
         release {
+            buildConfigField("String", "BASE_URL", "\"https://prueba.almxlvx.com\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -36,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

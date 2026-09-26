@@ -24,6 +24,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.io.IOException
 
 
@@ -179,9 +180,20 @@ fun ImageProxy.toBitmap(): Bitmap {
 // ===========================================================
 fun enviarAsistencia(
     context: android.content.Context,
-    url: String,
+    qrContent: String,
     callback: (Boolean) -> Unit
 ) {
+    // Del QR solo se toma el token; host, esquema y ruta se ignoran para que
+    // un QR falso no pueda redirigir los datos del alumno a otro servidor.
+    val token = android.net.Uri.parse(qrContent).getQueryParameter("token")
+    if (token.isNullOrBlank()) {
+        callback(false)
+        return
+    }
+    val url = "${BuildConfig.BASE_URL}/".toHttpUrl().newBuilder()
+        .addQueryParameter("token", token)
+        .build()
+
     val name = UserPrefs.getName(context)
     val matricula = UserPrefs.getMatricula(context)
 
