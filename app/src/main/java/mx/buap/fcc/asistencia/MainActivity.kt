@@ -3,29 +3,34 @@ package mx.buap.fcc.asistencia
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
+import mx.buap.fcc.asistencia.data.SessionStore
+import mx.buap.fcc.asistencia.ui.auth.CambiarPasswordViewModel
 import mx.buap.fcc.asistencia.ui.theme.Asistencia1Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val sessionStore = SessionStore(this)
+        val sesion = sessionStore.sesionVigente()
+
+        // Habia una sesion guardada pero ya expiro: se descarta y se avisa
+        val avisoInicial = if (sesion == null && sessionStore.leer() != null) {
+            sessionStore.borrar()
+            CambiarPasswordViewModel.AVISO_SESION_EXPIRADA
+        } else {
+            null
+        }
+
+        val startDestination = when {
+            sesion == null -> Rutas.LOGIN
+            sesion.alcance == SessionStore.ALCANCE_CAMBIAR_PASSWORD -> Rutas.CAMBIAR_PASSWORD
+            else -> Rutas.ESCANER
+        }
+
         setContent {
             Asistencia1Theme {
-
-                val context = LocalContext.current
-                var registrado by remember { mutableStateOf(UserPrefs.hasUser(context)) }
-
-                if (!registrado) {
-                    // Sólo la primera vez
-                    RegisterScreen {
-                        registrado = true
-                    }
-                } else {
-                    // Aquí irá el QR Scanner
-                    QRScannerScreen()
-                }
+                AppNavHost(startDestination = startDestination, avisoInicial = avisoInicial)
             }
         }
     }

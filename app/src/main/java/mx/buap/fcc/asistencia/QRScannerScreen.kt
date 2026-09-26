@@ -25,6 +25,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import mx.buap.fcc.asistencia.data.SessionStore
 import java.io.IOException
 
 
@@ -194,19 +195,20 @@ fun enviarAsistencia(
         .addQueryParameter("token", token)
         .build()
 
-    val name = UserPrefs.getName(context)
-    val matricula = UserPrefs.getMatricula(context)
+    // La identidad la da la sesion; el servidor toma nombre y matricula del nodo
+    // Alumno. Hasta que exista la firma ECDSA (X-SIGNATURE) el servidor responde 401.
+    val sesion = SessionStore(context).leer()
+    if (sesion == null) {
+        callback(false)
+        return
+    }
 
     val client = OkHttpClient()
 
-    val form = FormBody.Builder()
-        .add("nombre", name)
-        .add("matricula", matricula)
-        .build()
-
     val request = Request.Builder()
         .url(url)
-        .post(form)
+        .header("Authorization", "Bearer ${sesion.token}")
+        .post(FormBody.Builder().build())
         .build()
 
     client.newCall(request).enqueue(object : Callback {
