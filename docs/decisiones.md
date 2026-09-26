@@ -446,3 +446,63 @@ con el conjunto de datos de la tesis. La regresión de
   impide usarla.
 - **`ruff` no está instalado** en el entorno del proyecto; el formato del código nuevo
   no se verificó con esa herramienta.
+
+---
+
+## 2026-09-26 — Android: login, sesión cifrada y cambio de contraseña forzado (puntos de cambio 8, primera parte, y 9)
+
+### Decisión
+
+**Identidad en la app:** `RegisterScreen` y `UserPrefs` se retiraron. La app ya no
+captura nombre ni matrícula autodeclarados; la identidad es el token que emite
+`POST /login`. La matrícula se guarda solo para mostrarla en la UI; el nombre deja de
+guardarse (`/login` no lo devuelve y el servidor lo toma del nodo `Alumno` en el canje).
+
+**Almacenamiento (`data/SessionStore.kt`):** `EncryptedSharedPreferences` con una
+`MasterKey` AES256-GCM en Android Keystore. Guarda `token`, `alcance`, `expira_en`,
+`desfase_reloj_ms` y `matricula`. La vigencia se compara contra la hora del servidor
+estimada (`hora_local + desfase`), no contra el reloj del teléfono. Al arrancar se borra
+el archivo en claro de la versión anterior (`asistencias_prefs`).
+
+**Exclusión del respaldo:** `sesion_cifrada.xml` se excluye en `backup_rules.xml` y
+`data_extraction_rules.xml`. La `MasterKey` no viaja en el respaldo de Android, así que
+restaurar el archivo en otro dispositivo solo produciría datos que no se pueden descifrar.
+Si aun así el archivo resulta ilegible, `SessionStore` lo descarta y el alumno vuelve a
+iniciar sesión.
+
+**Desfase de reloj:** la fórmula es la del 2026-09-12,
+`desfase = hora_servidor - (t0 + (t1-t0)/2)`, con una variante: `t0` es la hora de pared
+al enviar, pero `t1-t0` se mide con `SystemClock.elapsedRealtime()` (reloj monotónico).
+Así, un ajuste automático de hora del teléfono durante la petición no altera la
+estimación del viaje. `t1` se toma al recibir la respuesta, antes de parsear el cuerpo.
+
+**Cambio de contraseña forzado:** si `/login` devuelve `alcance: "cambiar_password"`, la
+app muestra solo esa pantalla. Exige ≥12 caracteres y confirmación, con la misma regla
+que `LONGITUD_MINIMA_PASSWORD` del servidor; el servidor sigue siendo quien decide. Con
+`200` el servidor invalida la sesión, así que la app la borra y regresa al login con un
+aviso.
+
+**Red fuera de Composables:** `AuthApi` (OkHttp, `suspend` en `Dispatchers.IO`) y un
+`ViewModel` por pantalla. Los Composables solo leen `StateFlow` y llaman a funciones del
+`ViewModel`.
+
+**Accesibilidad:** etiquetas en todos los campos, `error()` semántico en campos con
+error, encabezados marcados con `heading()`, áreas táctiles de 48 dp mínimo,
+`contentDescription` en el indicador de carga y en el botón de mostrar contraseña, y
+mensajes de estado en *live regions* (`Assertive` para errores, `Polite` para carga y
+avisos), que TalkBack anuncia sin mover el foco. Los colores salen de
+`MaterialTheme.colorScheme` en vez del `Color.Black` fijo de `RegisterScreen`.
+
+### Límites conocidos
+
+- **El canje sigue respondiendo 401:** `enviarAsistencia` ya manda `Authorization: Bearer`
+  y dejó de mandar nombre y matrícula, pero falta `X-SIGNATURE`. Se resuelve en la
+  siguiente tarea (llaves EC en Keystore, `/dispositivos/registrar` y firma del canje).
+- **`security-crypto` está deprecada** por Google desde 1.1.0. Funciona y cubre lo que
+  se necesita; la alternativa futura es Keystore + DataStore directo.
+- **Háptica diferenciada pendiente:** va con el canje, donde hay un éxito o error real
+  que distinguir.
+- **Sin verificación en dispositivo todavía:** esta entrada se escribió con la
+  compilación de debug y release verificada, pero sin dispositivo conectado. Faltan la
+  prueba manual contra el servidor local, la inspección de `shared_prefs` y la pasada
+  con TalkBack.
