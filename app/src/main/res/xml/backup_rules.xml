@@ -2,8 +2,11 @@
    Reglas de respaldo para API <= 30.
    La sesion cifrada no se respalda: su llave maestra vive en Android Keystore y no
    viaja con el respaldo, asi que restaurarla solo produciria un archivo ilegible.
+   La huella de instalacion tampoco: restaurada en otro telefono, dos telefonos
+   compartirian la misma huella_dispositivo.
    See https://developer.android.com/guide/topics/data/autobackup
 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="sesion_cifrada.xml" />
+    <exclude domain="sharedpref" path="instalacion.xml" />
 </full-backup-content>
