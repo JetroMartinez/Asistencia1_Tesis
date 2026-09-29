@@ -30,7 +30,10 @@ sealed interface ResultadoAuth<out T> {
     data class ErrorServidor(val codigo: Int) : ResultadoAuth<Nothing>
 }
 
-/** Cliente de POST /login y POST /cambiar_password. Solo habla con BuildConfig.BASE_URL. */
+/**
+ * Cliente de POST /login, POST /cambiar_password y POST /dispositivos/registrar.
+ * Solo habla con BuildConfig.BASE_URL.
+ */
 class AuthApi(private val client: OkHttpClient = clienteCompartido) {
 
     /**
@@ -110,6 +113,41 @@ class AuthApi(private val client: OkHttpClient = clienteCompartido) {
                 }
             } catch (e: IOException) {
                 ResultadoAuth.SinConexion
+            }
+        }
+
+    /**
+     * Enrola la llave publica de este dispositivo con el token de alcance "completo".
+     * El servidor desactiva el dispositivo activo anterior. Devuelve `huella_llave`.
+     */
+    suspend fun registrarDispositivo(
+        token: String,
+        llavePublica: String,
+        huellaDispositivo: String,
+    ): ResultadoAuth<String> =
+        withContext(Dispatchers.IO) {
+            val cuerpo = JSONObject()
+                .put("llave_publica", llavePublica)
+                .put("huella_dispositivo", huellaDispositivo)
+            val request = Request.Builder()
+                .url("${BuildConfig.BASE_URL}/dispositivos/registrar")
+                .header("Authorization", "Bearer $token")
+                .post(cuerpo.toString().toRequestBody(JSON))
+                .build()
+            try {
+                client.newCall(request).execute().use { response ->
+                    val texto = response.body?.string().orEmpty()
+                    when (response.code) {
+                        201 -> ResultadoAuth.Exito(JSONObject(texto).getString("huella_llave"))
+                        400 -> ResultadoAuth.Rechazado(mensajeError(texto))
+                        401, 403 -> ResultadoAuth.SesionInvalida
+                        else -> ResultadoAuth.ErrorServidor(response.code)
+                    }
+                }
+            } catch (e: IOException) {
+                ResultadoAuth.SinConexion
+            } catch (e: JSONException) {
+                ResultadoAuth.ErrorServidor(201)
             }
         }
 

@@ -39,8 +39,21 @@ class SessionStore(context: Context) {
             .putLong(KEY_EXPIRA_EN, sesion.expiraEn.toRawBits())
             .putLong(KEY_DESFASE, sesion.desfaseRelojMs)
             .putString(KEY_MATRICULA, sesion.matricula)
+            // Sesion nueva: hay que volver a enrolar (docs/decisiones.md, 2026-09-29)
+            .putBoolean(KEY_ENROLADO, false)
+            .remove(KEY_HUELLA_LLAVE)
             .apply()
     }
+
+    /** El servidor confirmo el registro de la llave de este dispositivo en esta sesion. */
+    fun marcarEnrolado(huellaLlave: String) {
+        prefs.edit()
+            .putBoolean(KEY_ENROLADO, true)
+            .putString(KEY_HUELLA_LLAVE, huellaLlave)
+            .apply()
+    }
+
+    fun estaEnrolado(): Boolean = prefs.getBoolean(KEY_ENROLADO, false)
 
     fun leer(): Sesion? {
         val token = prefs.getString(KEY_TOKEN, null) ?: return null
@@ -102,6 +115,8 @@ class SessionStore(context: Context) {
         private const val KEY_EXPIRA_EN = "expira_en"
         private const val KEY_DESFASE = "desfase_reloj_ms"
         private const val KEY_MATRICULA = "matricula"
+        private const val KEY_ENROLADO = "enrolado"
+        private const val KEY_HUELLA_LLAVE = "huella_llave"
 
         const val ALCANCE_CAMBIAR_PASSWORD = "cambiar_password"
         const val ALCANCE_COMPLETO = "completo"
