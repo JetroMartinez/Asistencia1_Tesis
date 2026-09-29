@@ -506,3 +506,145 @@ avisos), que TalkBack anuncia sin mover el foco. Los colores salen de
   compilación de debug y release verificada, pero sin dispositivo conectado. Faltan la
   prueba manual contra el servidor local, la inspección de `shared_prefs` y la pasada
   con TalkBack.
+
+---
+
+## 2026-09-29 — Android: enrolamiento del dispositivo (punto de cambio 8, segunda parte)
+
+### Decisión
+
+**Par de llaves (`data/LlaveDispositivo.kt`):** EC P-256 generado dentro de Android
+Keystore con `KeyGenParameterSpec.Builder(ALIAS, PURPOSE_SIGN)`,
+`ECGenParameterSpec("secp256r1")`, `DIGEST_SHA256` y
+`setUserAuthenticationRequired(false)`. El alias es fijo
+(`llave_dispositivo_asistencia`) y la llave se genera solo si el alias no existe; si
+ya existe, se reutiliza.
+
+- **No exportable por construcción:** AndroidKeyStore no entrega los bytes de la
+  llave privada. La app solo tiene un manejador `PrivateKey` con el que pide firmas.
+- **Llave pública:** se envía como DER X.509 SubjectPublicKeyInfo en base64, el
+  formato que `/dispositivos/registrar` ya acepta.
+- **`firmar()`:** usa `SHA256withECDSA` y devuelve la firma DER en base64, que es lo
+  que espera `verificar_canje`. Queda lista, pero todavía no se conecta al canje.
+- **No se pide autenticación del usuario para firmar.** Pedir huella o PIN en cada
+  canje agregaría fricción en el aula. La identidad ya la aporta la sesión.
+
+**StrongBox con respaldo a TEE:**
+
+- Si el dispositivo anuncia `FEATURE_STRONGBOX_KEYSTORE` (API 28+), la llave se pide
+  con `setIsStrongBoxBacked(true)`. Si lanza `StrongBoxUnavailableException`, se
+  genera en el TEE y el respaldo se registra en el log.
+- **Por qué:** sin pedir StrongBox, la llave de un Pixel 9a vive en el TEE del Tensor
+  y no en el chip Titan M2. StrongBox es un elemento seguro aparte, más resistente a
+  ataques físicos.
+- **Costo:** StrongBox es más lento para firmar, y eso se suma a cada canje. Se mide
+  en la tarea de la firma del canje.
+
+**Huella de instalación (`data/Instalacion.kt`):** `huella_dispositivo` es un
+`UUID.randomUUID()` creado la primera vez que se pide. Dura mientras la app esté
+instalada y cambia al reinstalarla o al borrar sus datos.
+
+- Vive en un archivo propio (`instalacion.xml`) y no en la sesión cifrada, porque
+  `SessionStore.borrar()` se ejecuta en cada cierre de sesión.
+- Se excluye del respaldo en `backup_rules.xml` y `data_extraction_rules.xml`. Si se
+  restaurara en otro teléfono, dos teléfonos compartirían la huella.
+
+Por privacidad **no se usa ningún identificador de hardware ni de publicidad**:
+
+| Identificador | Por qué se descarta |
+|---|---|
+| ID de publicidad | Existe para rastreo publicitario entre apps |
+| IMEI y número de serie | Identifican el hardware de forma permanente, y desde API 29 exigen `READ_PRIVILEGED_PHONE_STATE`, que no se concede a apps normales |
+| `ANDROID_ID` | Sobrevive a la reinstalación, así que ya no sería por instalación |
+
+**"Enrolado" va atado a la sesión, no es permanente.** `SessionStore` guarda `enrolado`
+y `huella_llave`. `guardar()` (login nuevo) pone `enrolado = false`, y `borrar()`
+limpia todo. Así, cada login con alcance `"completo"` vuelve a enrolar.
+
+- **Por qué:** con la política de un dispositivo activo, iniciar sesión en un teléfono
+  significa "este es mi teléfono ahora". Si la bandera fuera permanente, este caso se
+  rompe:
+  1. El alumno inicia sesión en el teléfono A.
+  2. Inicia sesión en el teléfono B, lo que desactiva A en el servidor.
+  3. Vuelve a A e inicia sesión. A se saltaría el enrolamiento y cada canje
+     respondería 403, sin forma de recuperarse.
+- **Costo:** una petición extra por login y un nodo `Dispositivo` nuevo con la misma
+  llave y la misma huella. La regla de anomalía de re-enrolamientos frecuentes
+  (2026-09-12) debe contar como re-enrolamiento solo los cambios de llave o de huella,
+  no la repetición de la misma. Con los datos que ya se guardan, esa distinción es
+  directa.
+- **Por qué se reutiliza la llave:** si dos alumnos enrolan el mismo teléfono, el
+  servidor ve la misma llave con dos matrículas. Esa es la señal de proxy del
+  2026-09-23. Generar una llave nueva en cada login la ocultaría.
+
+**Flujo sin estados a medias:** una pantalla propia (`EnrolamientoScreen` +
+`EnrolamientoViewModel`) va entre el login y el escáner.
+
+- Obtiene o crea la llave fuera del hilo principal, lee la huella y llama a
+  `/dispositivos/registrar`.
+- Solo marca `enrolado` si el servidor responde 201 **y** la `huella_llave` que
+  devuelve coincide con la calculada localmente (primeros 16 hexadecimales de SHA-256
+  del DER).
+- Si falla la llave, la red, el servidor o la huella: mensaje en *live region*
+  `Assertive` y botón **Reintentar**. Reintentar es seguro, porque la llave se
+  reutiliza y el servidor reemplaza el dispositivo activo.
+- Con 401/403: borra la sesión y vuelve al login con aviso.
+- Botón **Cerrar sesión**, para que el alumno nunca quede atrapado.
+- Al arrancar, `MainActivity` manda a esta pantalla si la sesión es completa pero no
+  está enrolada. Eso cubre que el proceso muera a la mitad del enrolamiento y a
+  quien actualice la app con una sesión ya guardada.
+
+**Nivel de seguridad en el log:** `LlaveDispositivo` escribe con la etiqueta
+`LlaveDispositivo`, también en release, porque no contiene datos personales:
+
+- si la llave es nueva o reutilizada
+- si se pidió StrongBox y si hubo respaldo a TEE
+- el nivel de seguridad reportado por `KeyInfo` (`securityLevel` en API 31+;
+  `isInsideSecureHardware` antes)
+- la huella de la llave, el API y el modelo
+
+**Observado en el Pixel 9a (Titan M2):** [PENDIENTE: correr
+`LlaveDispositivoTest` y el enrolamiento manual con el teléfono conectado; guardar
+`adb logcat -s LlaveDispositivo` en
+`docs/evidencias/enrolamiento_dispositivo_2026-09-29.txt`. Se espera `STRONGBOX`.]
+
+### Verificación
+
+- `./gradlew assembleDebug assembleRelease assembleDebugAndroidTest`: compila sin
+  errores.
+- `androidTest/.../LlaveDispositivoTest.kt` verifica:
+  - creación y reutilización de la llave (misma llave pública)
+  - que la llave es P-256
+  - que una firma verifica y falla con un mensaje alterado
+  - que en API 31+ el nivel es `STRONGBOX` o `TRUSTED_ENVIRONMENT`
+- **Pendiente de correr en dispositivo:** la prueba instrumentada y la prueba manual
+  contra el servidor local con el alumno sintético SIM0001:
+  - login → enrolamiento → 201 → escáner
+  - `Dispositivo` activo en Neo4j con la huella UUID
+  - error y reintento con el servidor apagado
+  - re-login con la misma llave
+
+### Límites conocidos
+
+- **El nivel de seguridad no lo puede verificar el servidor (Key Attestation):**
+  - `KeyInfo.getSecurityLevel` lo reporta el propio cliente. Una app modificada o
+    instrumentada podría mentir sobre él: reportar `STRONGBOX` con la llave en
+    software, o enrolar una llave generada fuera de Keystore. El servidor recibe solo
+    una llave pública y no puede distinguir ninguno de los dos casos.
+  - La única prueba verificable por el servidor sería Key Attestation:
+    1. generar la llave con `setAttestationChallenge` sobre un reto emitido por el
+       servidor;
+    2. enviar la cadena de certificados de atestación;
+    3. validarla en el servidor hasta la raíz de atestación de Google;
+    4. leer en la extensión de atestación el `attestationSecurityLevel` y las
+       propiedades de la llave.
+  - Queda **fuera de alcance por el congelamiento de código del 12 de octubre de
+    2026** y se documenta como trabajo futuro. El nivel que aparece en el log es una
+    observación del dispositivo de pruebas, no una garantía del sistema.
+- **La latencia de firma en StrongBox todavía no se mide.** Se mide en la tarea de la
+  firma del canje. Si resulta prohibitiva, la alternativa es el TEE, y la comparación
+  misma es un resultado.
+- **Root:** sin cambios respecto al 2026-09-12. Keystore impide extraer la llave, no
+  usarla desde el dispositivo ya enrolado.
+- **El canje sigue respondiendo 401:** `enviarAsistencia` aún no manda `X-TIMESTAMP` ni
+  `X-SIGNATURE`. Es la siguiente tarea, junto con la háptica diferenciada.
