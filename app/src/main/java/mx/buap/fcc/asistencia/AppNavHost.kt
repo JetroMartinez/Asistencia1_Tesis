@@ -10,11 +10,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import mx.buap.fcc.asistencia.ui.auth.CambiarPasswordScreen
 import mx.buap.fcc.asistencia.ui.auth.DestinoLogin
+import mx.buap.fcc.asistencia.ui.auth.EnrolamientoScreen
 import mx.buap.fcc.asistencia.ui.auth.LoginScreen
 
 object Rutas {
     const val LOGIN = "login?aviso={aviso}"
     const val CAMBIAR_PASSWORD = "cambiar_password"
+    const val ENROLAMIENTO = "enrolamiento"
     const val ESCANER = "escaner"
 
     fun login(aviso: String) = "login?aviso=${Uri.encode(aviso)}"
@@ -22,7 +24,8 @@ object Rutas {
 
 /**
  * Sin sesion vigente: login. Alcance "cambiar_password": cambio forzado.
- * Alcance completo: escaner. MainActivity decide el destino inicial.
+ * Alcance completo sin enrolar: enrolamiento. Enrolado: escaner.
+ * MainActivity decide el destino inicial.
  */
 @Composable
 fun AppNavHost(
@@ -45,7 +48,7 @@ fun AppNavHost(
                 onDestino = { destino ->
                     val ruta = when (destino) {
                         DestinoLogin.CAMBIAR_PASSWORD -> Rutas.CAMBIAR_PASSWORD
-                        DestinoLogin.ESCANER -> Rutas.ESCANER
+                        DestinoLogin.ENROLAMIENTO -> Rutas.ENROLAMIENTO
                     }
                     navController.reemplazarPila(ruta)
                 },
@@ -54,6 +57,13 @@ fun AppNavHost(
 
         composable(Rutas.CAMBIAR_PASSWORD) {
             CambiarPasswordScreen(
+                onSalir = { aviso -> navController.reemplazarPila(Rutas.login(aviso)) },
+            )
+        }
+
+        composable(Rutas.ENROLAMIENTO) {
+            EnrolamientoScreen(
+                onListo = { navController.reemplazarPila(Rutas.ESCANER) },
                 onSalir = { aviso -> navController.reemplazarPila(Rutas.login(aviso)) },
             )
         }

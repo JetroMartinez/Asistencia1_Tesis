@@ -25,6 +25,8 @@ class MainActivity : ComponentActivity() {
         val startDestination = when {
             sesion == null -> Rutas.LOGIN
             sesion.alcance == SessionStore.ALCANCE_CAMBIAR_PASSWORD -> Rutas.CAMBIAR_PASSWORD
+            // Sesion completa sin enrolar (p. ej. la app se cerro a la mitad): se reintenta
+            !sessionStore.estaEnrolado() -> Rutas.ENROLAMIENTO
             else -> Rutas.ESCANER
         }
 

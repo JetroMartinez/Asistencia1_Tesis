@@ -13,7 +13,7 @@ import mx.buap.fcc.asistencia.data.ResultadoAuth
 import mx.buap.fcc.asistencia.data.SessionStore
 
 /** A donde lleva un login exitoso, segun el alcance del token. */
-enum class DestinoLogin { CAMBIAR_PASSWORD, ESCANER }
+enum class DestinoLogin { CAMBIAR_PASSWORD, ENROLAMIENTO }
 
 data class LoginUiState(
     val matricula: String = "",
@@ -56,7 +56,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                             if (resultado.valor.alcance == SessionStore.ALCANCE_CAMBIAR_PASSWORD) {
                                 DestinoLogin.CAMBIAR_PASSWORD
                             } else {
-                                DestinoLogin.ESCANER
+                                // Cada sesion completa vuelve a enrolar este dispositivo
+                                DestinoLogin.ENROLAMIENTO
                             }
                         estado.copy(cargando = false, password = "", destino = destino)
                     }
