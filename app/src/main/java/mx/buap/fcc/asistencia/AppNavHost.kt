@@ -74,6 +74,7 @@ fun AppNavHost(
                 onCerrarSesion = {
                     navController.reemplazarPila(Rutas.login(EnrolamientoViewModel.AVISO_SESION_CERRADA))
                 },
+                onSesionInvalida = { aviso -> navController.reemplazarPila(Rutas.login(aviso)) },
             )
         }
     }
