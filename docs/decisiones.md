@@ -648,3 +648,15 @@ limpia todo. Así, cada login con alcance `"completo"` vuelve a enrolar.
   usarla desde el dispositivo ya enrolado.
 - **El canje sigue respondiendo 401:** `enviarAsistencia` aún no manda `X-TIMESTAMP` ni
   `X-SIGNATURE`. Es la siguiente tarea, junto con la háptica diferenciada.
+- **Cierre de sesión solo local:** el botón "Cerrar sesión" del escáner (con diálogo de
+  confirmación) borra `sesion_cifrada` y vuelve al login. No toca la llave de Keystore
+  ni la huella de instalación, así que el siguiente login re-enrola la misma llave (en
+  el log aparece `llave=reutilizada` con la misma `huella_llave`).
+  - El servidor no tiene `POST /logout`, así que el token borrado **sigue siendo
+    válido** hasta su `expira_en`, o hasta el siguiente `/login` de esa matrícula, que
+    lo revoca porque solo hay una sesión activa.
+  - El riesgo residual es bajo: el token ya no existe en el teléfono, y por sí solo no
+    permite canjear, porque el canje exige también la firma del dispositivo. Pero una
+    copia obtenida antes del cierre (tráfico capturado, dispositivo rooteado) seguiría
+    sirviendo para `/dispositivos/registrar` hasta que expire.
+  - Revocar en el servidor requiere un endpoint nuevo. Queda como trabajo futuro.
