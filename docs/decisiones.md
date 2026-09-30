@@ -424,6 +424,10 @@ sintético SIM0001). Genera una llave P-256 local, la enrola por
 | Firma válida, formulario con nombre/matrícula falsos | 200 | usado, con la matrícula y el nombre de la sesión |
 | Replay exacto de la petición anterior | 200 (`warning.html`) | `warnings=1`, registro sin cambios |
 
+> **Corregido el 2026-09-30:** el replay autenticado ahora responde `409`
+> (`token_reutilizado`), con el mismo incremento de `warnings`. La fila se conserva
+> como registro de lo verificado ese día; ver la entrada "Firma del canje en Android".
+
 El script borra al terminar los nodos `Token` que creó, para no mezclar datos de prueba
 con el conjunto de datos de la tesis. La regresión de
 `probar_registro_dispositivo.py` sigue en 17/17.
@@ -664,3 +668,123 @@ distinguir "mismo telefono otra vez" de "telefono distinto".
     copia obtenida antes del cierre (tráfico capturado, dispositivo rooteado) seguiría
     sirviendo para `/dispositivos/registrar` hasta que expire.
   - Revocar en el servidor requiere un endpoint nuevo. Queda como trabajo futuro.
+
+---
+
+## 2026-09-30 — Firma del canje en Android (punto de cambio 8, tercera parte)
+
+### Decisión
+
+**Encabezados del canje** (`enviarAsistencia` en `QRScannerScreen.kt`):
+
+- `Authorization: Bearer` con el token de la sesión vigente.
+- `X-TIMESTAMP`: la hora del servidor estimada, `SessionStore.ahoraServidorMs() / 1000`
+  (hora local + desfase medido en el login), en segundos enteros, como la parsea
+  `verificar_canje`.
+- `X-SIGNATURE`: `LlaveDispositivo.firmar` sobre `"{timestamp}/asistencia:{token_qr}"`.
+  Es SHA256withECDSA, con firma DER en base64.
+- El `token_qr` es el valor ya decodificado del parámetro `token` del QR. La URL se
+  arma siempre sobre `BuildConfig.BASE_URL`, igual que antes.
+
+**Firma fuera del hilo principal:** el analizador de CameraX usa `getMainExecutor`, así
+que el QR llega en el hilo principal. La firma corre en `Dispatchers.Default` y la
+petición en `Dispatchers.IO`, desde un `rememberCoroutineScope`. La lógica de red
+sigue en una función fuera del Composable.
+
+**Hueco encontrado: el replay no se distinguía del éxito.** Al escribir el cliente
+Android se encontró que el replay de un token ya canjeado (200 con `warning.html`) no
+se distinguía del éxito (200 con `success.html`) por el código de estado. Por eso la
+app mostraba "Asistencia registrada" en un reuso. El diseño documentado (2026-09-12,
+punto de cambio 4, y 2026-09-24) no fijaba una respuesta para este caso.
+
+Se corrige en `process_checkin` con un `if` dentro de la rama `is_used`:
+
+- **Solo el POST responde `409`:** `{"error": "token_reutilizado", "warnings": n}`. A
+  esa rama solo llega un POST que ya pasó `verificar_canje` (Bearer y `X-SIGNATURE`
+  válidos); uno sin autenticar se corta antes con 401 o 403.
+- **`increment_token_warnings` se ejecuta antes de responder,** igual que antes, así
+  que el contador de reintentos, dato de la sección 9 de `CLAUDE.md`, no se pierde.
+- **La rama GET y `warning.html` no cambian** para el navegador.
+
+**Respuestas y reacción de la app:**
+
+| Código | Causa en el servidor | App |
+|---|---|---|
+| 200 | Canje registrado | Háptica de confirmación, "Asistencia registrada" |
+| 401 | Sesión expirada o revocada, firma inválida, timestamp fuera de ventana | Borra la sesión y vuelve al login |
+| 403 | Sin dispositivo activo (otro teléfono se enroló) o alcance incorrecto | Borra la sesión y vuelve al login |
+| 409 | `token_reutilizado` | Háptica de rechazo, mensaje y "Escanear de nuevo" |
+| 404 | Token QR inexistente | Háptica de rechazo, mensaje y "Escanear de nuevo" |
+| Red o 5xx | — | Háptica de rechazo, mensaje y "Escanear de nuevo" |
+
+**Recuperación uniforme por re-login:** 401 y 403 llevan al mismo lugar porque un
+nuevo inicio de sesión corrige todas sus causas:
+
+- emite un token nuevo;
+- vuelve a enrolar la llave (entrada 2026-09-29), lo que reactiva este teléfono si
+  otro lo había desplazado;
+- recalcula el desfase de reloj, lo que corrige un timestamp fuera de ventana.
+
+**Háptica y TalkBack (sección 10 de `CLAUDE.md`):**
+
+- La háptica usa `View.performHapticFeedback`: `CONFIRM` y `REJECT` en API 30+, y
+  `CONTEXT_CLICK` y `LONG_PRESS` en versiones anteriores. No requiere el permiso
+  `VIBRATE`.
+- El mensaje de resultado está en una *live region*: `Polite` para "Enviando…" y
+  el éxito, `Assertive` para los errores. Es texto blanco sobre el fondo negro de la
+  cámara (contraste 21:1); antes usaba el color por defecto, ilegible en tema claro.
+- El botón "Escanear de nuevo" mide 48 dp y tiene `contentDescription`. Antes, tras un
+  error, la pantalla quedaba bloqueada porque nunca se limpiaba el QR escaneado.
+
+**Se quitó `activity?.finish()` tras el éxito.** Cerrar la app de inmediato cortaba el
+anuncio de TalkBack, y el alumno no alcanzaba a leer la confirmación.
+
+### Latencia de firma: StrongBox contra TEE
+
+Hay dos fuentes de datos, las dos con la etiqueta `LlaveDispositivo` o `LatenciaFirma`
+en logcat, sin datos personales:
+
+- **Prueba reproducible:** `LlaveDispositivoTest.medirLatenciaFirma`. Hace 10 firmas
+  de calentamiento y 100 medidas con la llave de producción, y lo mismo con una llave
+  TEE de prueba con los mismos parámetros, que se crea y se borra dentro de la prueba.
+  Las dos rutas se miden igual que en el canje (abrir Keystore, obtener la llave,
+  firmar) y se reportan mínimo, p50, p95, p99 y máximo.
+- **Flujo real:** cada canje registra `canje firma_ms=… nivel=…`.
+
+| Nivel | n | mín | p50 | p95 | p99 | máx (ms) |
+|---|---|---|---|---|---|---|
+| STRONGBOX (Titan M2) | [PENDIENTE] | | | | | |
+| TRUSTED_ENVIRONMENT | [PENDIENTE] | | | | | |
+
+[PENDIENTE: correr `./gradlew connectedDebugAndroidTest` en el Pixel 9a, guardar
+`adb logcat -s LatenciaFirma LlaveDispositivo` en
+`docs/evidencias/latencia_firma_2026-09-30.txt` y llenar la tabla. La conclusión sobre
+si StrongBox es aceptable para el tiempo de registro se escribe después de ver los
+datos, no antes.]
+
+### Verificación
+
+- `backend/tests/probar_canje_firmado.py`: 9/9, salida en
+  `docs/evidencias/canje_firmado_2026-09-30.txt`.
+  - El caso del replay ahora exige `409` con `token_reutilizado` y `warnings=1`.
+  - Se agregó un caso nuevo: el GET del token usado sigue respondiendo `warning.html`
+    con 200 e incrementa `warnings`.
+- `probar_registro_dispositivo.py` sigue en 17/17.
+- `./gradlew assembleDebug assembleRelease assembleDebugAndroidTest` compila.
+- Pendiente en dispositivo:
+  - la prueba de latencia
+  - canje real contra el servidor local con `visor.py`: éxito y rotación del QR,
+    reescaneo con 409, y forzar un 403 re-enrolando desde otro dispositivo
+  - pasada con TalkBack
+
+### Límites conocidos
+
+- **La app no distingue los motivos del 401:** todos llevan al login. El mensaje JSON
+  del servidor se conserva en `ResultadoCanje.NoAutorizado`, pero no se muestra.
+- **La háptica respeta el ajuste de "respuesta táctil" del sistema:** si el usuario lo
+  desactivó, no vibra. Es intencional; el anuncio de TalkBack no depende de ese ajuste.
+- **Los rechazos todavía no se registran en el servidor** (punto de cambio 7).
+- **Ejecutar las pruebas del backend afecta a SIM0001:** `probar_canje_firmado.py`
+  enrola una llave local e invalida la sesión de SIM0001. Después de correrlo, el
+  teléfono de pruebas recibe 401 en su siguiente canje y debe iniciar sesión de nuevo.
+  Es el camino de recuperación esperado.
