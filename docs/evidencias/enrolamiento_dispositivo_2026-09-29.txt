@@ -1,0 +1,28 @@
+# Enrolamiento de dispositivo — nivel de seguridad de la llave EC P-256
+# Dispositivo: Google Pixel 9a (Titan M2), Android API 37
+# Fecha: 2026-09-29
+#
+# Bloque 1 (18:58) — prueba instrumentada LlaveDispositivoTest,
+#   ejecutada con: ./gradlew connectedDebugAndroidTest
+#   Verifica creacion, reutilizacion, curva P-256, firma valida e invalida.
+#   Las cuatro primeras lineas son llaves nuevas de tests distintos;
+#   la quinta demuestra reutilizacion (misma huella_llave).
+#
+# Bloque 2 (21:57-21:58) — prueba manual del flujo completo con alumno
+#   sintetico SIM0001 contra el servidor local: login, enrolamiento,
+#   cierre de sesion y re-login. Ambas lineas muestran llave=reutilizada
+#   con la misma huella_llave, lo que confirma que la llave del Keystore
+#   sobrevive al cierre de sesion.
+#
+# Resultado: nivel=STRONGBOX en todos los casos. La llave privada reside
+# en el elemento seguro Titan M2, no en el TEE del procesador principal.
+# respaldo_tee=false confirma que no hizo falta el respaldo.
+--------- beginning of main
+09-29 18:58:17.974 24721 24761 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=0239e71d202803db api=37 modelo=Pixel 9a
+09-29 18:58:18.102 24721 24761 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=ffa7b745e6c84f6e api=37 modelo=Pixel 9a
+09-29 18:58:18.197 24721 24761 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=1dc370c3d4fdd53d api=37 modelo=Pixel 9a
+09-29 18:58:18.294 24721 24761 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=4bae389b9763e0f1 api=37 modelo=Pixel 9a
+09-29 18:58:18.297 24721 24761 I LlaveDispositivo: llave=reutilizada strongbox_solicitado=n/a respaldo_tee=false nivel=STRONGBOX huella_llave=4bae389b9763e0f1 api=37 modelo=Pixel 9a
+--------- beginning of main
+09-29 21:57:23.775 12720 13004 I LlaveDispositivo: llave=reutilizada strongbox_solicitado=n/a respaldo_tee=false nivel=STRONGBOX huella_llave=98047ea25af7dbd1 api=37 modelo=Pixel 9a
+09-29 21:58:11.667 12720 13004 I LlaveDispositivo: llave=reutilizada strongbox_solicitado=n/a respaldo_tee=false nivel=STRONGBOX huella_llave=98047ea25af7dbd1 api=37 modelo=Pixel 9a

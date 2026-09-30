@@ -603,10 +603,14 @@ limpia todo. Así, cada login con alcance `"completo"` vuelve a enrolar.
   `isInsideSecureHardware` antes)
 - la huella de la llave, el API y el modelo
 
-**Observado en el Pixel 9a (Titan M2):** [PENDIENTE: correr
-`LlaveDispositivoTest` y el enrolamiento manual con el teléfono conectado; guardar
-`adb logcat -s LlaveDispositivo` en
-`docs/evidencias/enrolamiento_dispositivo_2026-09-29.txt`. Se espera `STRONGBOX`.]
+**Observado en el Pixel 9a (Titan M2): STRONGBOX en todos los casos, tanto en la
+prueba instrumentada como en el flujo manual. respaldo_tee=false, o sea que
+no hizo falta el respaldo al TEE. Evidencia en
+docs/evidencias/enrolamiento_dispositivo_2026-09-29.txt.
+Se verifico ademas que la llave sobrevive al cierre de
+sesion:tras cerrar sesion y volver a entrar, el log muestra llave=reutilizada con
+la misma huella_llave, que es lo que permite a la regla de anomalia
+distinguir "mismo telefono otra vez" de "telefono distinto".
 
 ### Verificación
 
@@ -617,8 +621,8 @@ limpia todo. Así, cada login con alcance `"completo"` vuelve a enrolar.
   - que la llave es P-256
   - que una firma verifica y falla con un mensaje alterado
   - que en API 31+ el nivel es `STRONGBOX` o `TRUSTED_ENVIRONMENT`
-- **Pendiente de correr en dispositivo:** la prueba instrumentada y la prueba manual
-  contra el servidor local con el alumno sintético SIM0001:
+  - la prueba instrumentada y la manual se
+   corrieron el 2026-09-29 en el Pixel 9a con resultado correcto.
   - login → enrolamiento → 201 → escáner
   - `Dispositivo` activo en Neo4j con la huella UUID
   - error y reintento con el servidor apagado
