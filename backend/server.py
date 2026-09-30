@@ -422,6 +422,10 @@ def process_checkin():
         if is_used:
             # Repeated token warning
             new_warnings = session.execute_write(increment_token_warnings, token)
+            # POST: solo llega aqui si paso verificar_canje (Bearer + X-SIGNATURE).
+            # La app necesita un codigo distinto del exito (docs/decisiones.md, 2026-09-30).
+            if request.method == 'POST':
+                return jsonify({"error": "token_reutilizado", "warnings": new_warnings}), 409
             response     = make_response(render_template('warning.html', warnings=new_warnings))
             response.set_cookie('user_tracker', user_cookie)
             return response

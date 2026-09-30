@@ -131,11 +131,19 @@ verificar(f"firma valida (formulario con datos falsos): obtenido {r.status_code}
 
 r = cliente.post(f"/?token={token_a}", data=FORM_FALSO, headers=validos)
 t = estado_token(token_a)
-# Pasa la autenticacion y cae en la logica existente de token ya usado (warning.html)
-verificar(f"replay exacto del mismo token_qr: cuenta como reintento y no reescribe el "
-          f"registro, obtenido {r.status_code}, {t}",
-          r.status_code == 200 and t["used"] is True and t["warnings"] == 1
+# Pasa la autenticacion y cae en la logica de token ya usado: el POST autenticado
+# responde 409 (2026-09-30; antes 200 con warning.html) y sigue contando el reintento
+verificar(f"replay exacto del mismo token_qr: 409, cuenta como reintento y no reescribe "
+          f"el registro, obtenido {r.status_code} {r.get_json()}, {t}",
+          r.status_code == 409 and (r.get_json() or {}).get("error") == "token_reutilizado"
+          and t["used"] is True and t["warnings"] == 1
           and t["matricula"] == MATRICULA and t["nombre"] == alumno["nombre"])
+
+r = cliente.get(f"/?token={token_a}")
+t = estado_token(token_a)
+# La rama GET (navegador) no cambia: warning.html con 200, y tambien cuenta el reintento
+verificar(f"GET del token usado: warning.html intacto, obtenido {r.status_code}, {t}",
+          r.status_code == 200 and "text/html" in r.content_type and t["warnings"] == 2)
 
 with server.driver.session() as s:
     s.run("MATCH (t:Token) WHERE t.token IN $tokens DELETE t", tokens=tokens_creados)
