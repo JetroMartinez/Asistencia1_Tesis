@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,7 +36,7 @@ import java.io.IOException
 // ===========================================================
 @SuppressLint("ContextCastToActivity")
 @Composable
-fun QRScannerScreen() {
+fun QRScannerScreen(onCerrarSesion: () -> Unit) {
 
     val context = LocalContext.current
     val activity = LocalContext.current as? android.app.Activity
@@ -42,6 +44,33 @@ fun QRScannerScreen() {
 
     var scannedUrl by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf("") }
+    var confirmarSalida by remember { mutableStateOf(false) }
+
+    // Cierre de sesion solo local: no borra la llave de Keystore ni la huella de
+    // instalacion, para que el siguiente login re-enrole la misma llave.
+    if (confirmarSalida) {
+        AlertDialog(
+            onDismissRequest = { confirmarSalida = false },
+            title = { Text("¿Cerrar sesión?") },
+            text = { Text("Tendrás que volver a iniciar sesión para registrar asistencia.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmarSalida = false
+                        SessionStore(context).borrar()
+                        onCerrarSesion()
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text("Cerrar sesión") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { confirmarSalida = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text("Cancelar") }
+            },
+        )
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -65,6 +94,15 @@ fun QRScannerScreen() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Escanea el QR", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),color = Color.White)
+        TextButton(
+            onClick = { confirmarSalida = true },
+            modifier = Modifier
+                .align(Alignment.End)
+                .heightIn(min = 48.dp)
+                .semantics { contentDescription = "Cerrar sesión y volver al inicio de sesión" },
+        ) {
+            Text("Cerrar sesión", color = Color.White)
+        }
         Spacer(Modifier.height(40.dp))
 
         Box(Modifier.weight(1f)) {

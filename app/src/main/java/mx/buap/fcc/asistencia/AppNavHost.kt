@@ -11,6 +11,7 @@ import androidx.navigation.navArgument
 import mx.buap.fcc.asistencia.ui.auth.CambiarPasswordScreen
 import mx.buap.fcc.asistencia.ui.auth.DestinoLogin
 import mx.buap.fcc.asistencia.ui.auth.EnrolamientoScreen
+import mx.buap.fcc.asistencia.ui.auth.EnrolamientoViewModel
 import mx.buap.fcc.asistencia.ui.auth.LoginScreen
 
 object Rutas {
@@ -69,7 +70,11 @@ fun AppNavHost(
         }
 
         composable(Rutas.ESCANER) {
-            QRScannerScreen()
+            QRScannerScreen(
+                onCerrarSesion = {
+                    navController.reemplazarPila(Rutas.login(EnrolamientoViewModel.AVISO_SESION_CERRADA))
+                },
+            )
         }
     }
 }
