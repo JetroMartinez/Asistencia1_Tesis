@@ -1,0 +1,9 @@
+--------- beginning of main
+09-30 11:12:13.758 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=1f8ebb66225caa69 api=37 modelo=Pixel 9a
+09-30 11:12:13.933 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=d039725d41e37ece api=37 modelo=Pixel 9a
+09-30 11:12:14.050 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=713837bb9a8008bd api=37 modelo=Pixel 9a
+09-30 11:12:19.448 16653 16676 I LatenciaFirma: nivel=STRONGBOX n=100 calentamiento=10 min=41.5 p50=49.8 p95=53.5 p99=55.9 max=58.8 ms modelo=Pixel 9a api=37
+09-30 11:12:20.481 16653 16676 I LatenciaFirma: nivel=TRUSTED_ENVIRONMENT (llave de prueba) n=100 calentamiento=10 min=5.4 p50=8.1 p95=12.2 p99=12.6 max=15.7 ms modelo=Pixel 9a api=37
+09-30 11:12:20.610 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=13b9aa7ac1a34c11 api=37 modelo=Pixel 9a
+09-30 11:12:20.754 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=5627f4881ae611fa api=37 modelo=Pixel 9a
+09-30 11:12:20.769 16653 16676 I LlaveDispositivo: llave=reutilizada strongbox_solicitado=n/a respaldo_tee=false nivel=STRONGBOX huella_llave=5627f4881ae611fa api=37 modelo=Pixel 9a

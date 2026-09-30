@@ -753,14 +753,22 @@ en logcat, sin datos personales:
 
 | Nivel | n | mín | p50 | p95 | p99 | máx (ms) |
 |---|---|---|---|---|---|---|
-| STRONGBOX (Titan M2) | [PENDIENTE] | | | | | |
-| TRUSTED_ENVIRONMENT | [PENDIENTE] | | | | | |
+| STRONGBOX (Titan M2) | 100 | 41.5 | 49.8 | 53.5 | 55.9 | 58.8 |
+| TRUSTED_ENVIRONMENT (llave de prueba) | 100 | 5.4 | 8.1 | 12.2 | 12.6 | 15.7 |
 
-[PENDIENTE: correr `./gradlew connectedDebugAndroidTest` en el Pixel 9a, guardar
-`adb logcat -s LatenciaFirma LlaveDispositivo` en
-`docs/evidencias/latencia_firma_2026-09-30.txt` y llenar la tabla. La conclusión sobre
-si StrongBox es aceptable para el tiempo de registro se escribe después de ver los
-datos, no antes.]
+Datos del Pixel 9a, API 37, 2026-09-30 11:12, con 10 firmas de calentamiento. Fuente:
+`docs/evidencias/latencia_firma_2026-09-30.txt`.
+
+**Lo que muestran los datos:**
+- En la mediana, StrongBox tarda unas 6 veces lo que tarda el TEE (49.8 contra
+  8.1 ms). En valor absoluto, son unos 42 ms más por canje en p50 y unos 41 ms en p95.
+- La dispersión de StrongBox es baja: de 41.5 a 58.8 ms, sin colas largas en la muestra.
+
+**Todavía no se puede concluir** si ese costo es aceptable. Depende del tiempo total de
+registro por alumno (métrica 3 de la sección 9), que aún no se mide.
+
+[PENDIENTE: muestras `canje firma_ms` del flujo real; la evidencia actual solo contiene
+la prueba instrumentada.]
 
 ### Verificación
 
