@@ -1,3 +1,10 @@
+# Latencia de firma ECDSA P-256: StrongBox (Titan M2) contra TEE
+# Dispositivo: Google Pixel 9a, Android API 37. Fecha: 2026-09-30
+# Prueba: LlaveDispositivoTest.medirLatenciaFirma (./gradlew connectedDebugAndroidTest)
+#   10 firmas de calentamiento + 100 medidas por nivel; ms por firma, incluye abrir
+#   Keystore y obtener la llave, igual que en el canje. Sin datos personales.
+#
+# Corrida 1 (11:12)
 --------- beginning of main
 09-30 11:12:13.758 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=1f8ebb66225caa69 api=37 modelo=Pixel 9a
 09-30 11:12:13.933 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=d039725d41e37ece api=37 modelo=Pixel 9a
@@ -7,3 +14,14 @@
 09-30 11:12:20.610 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=13b9aa7ac1a34c11 api=37 modelo=Pixel 9a
 09-30 11:12:20.754 16653 16676 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=5627f4881ae611fa api=37 modelo=Pixel 9a
 09-30 11:12:20.769 16653 16676 I LlaveDispositivo: llave=reutilizada strongbox_solicitado=n/a respaldo_tee=false nivel=STRONGBOX huella_llave=5627f4881ae611fa api=37 modelo=Pixel 9a
+#
+# Corrida 2 (12:00)
+--------- beginning of main
+09-30 12:00:04.167 25502 25515 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=3791ac287fc003d8 api=37 modelo=Pixel 9a
+09-30 12:00:04.297 25502 25515 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=d4b298ba18ce4893 api=37 modelo=Pixel 9a
+09-30 12:00:04.397 25502 25515 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=e7954ca90330795f api=37 modelo=Pixel 9a
+09-30 12:00:09.774 25502 25515 I LatenciaFirma: nivel=STRONGBOX n=100 calentamiento=10 min=38.9 p50=49.6 p95=53.7 p99=55.3 max=55.3 ms modelo=Pixel 9a api=37
+09-30 12:00:10.670 25502 25515 I LatenciaFirma: nivel=TRUSTED_ENVIRONMENT (llave de prueba) n=100 calentamiento=10 min=4.8 p50=7.9 p95=9.4 p99=10.9 max=11.9 ms modelo=Pixel 9a api=37
+09-30 12:00:10.821 25502 25515 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=74ed10e28708f2c7 api=37 modelo=Pixel 9a
+09-30 12:00:10.969 25502 25515 I LlaveDispositivo: llave=nueva strongbox_solicitado=true respaldo_tee=false nivel=STRONGBOX huella_llave=0797a9a6b100b38e api=37 modelo=Pixel 9a
+09-30 12:00:10.985 25502 25515 I LlaveDispositivo: llave=reutilizada strongbox_solicitado=n/a respaldo_tee=false nivel=STRONGBOX huella_llave=0797a9a6b100b38e api=37 modelo=Pixel 9a

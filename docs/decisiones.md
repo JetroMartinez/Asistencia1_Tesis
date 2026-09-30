@@ -753,19 +753,34 @@ en logcat, sin datos personales:
 
 | Nivel | n | mín | p50 | p95 | p99 | máx (ms) |
 |---|---|---|---|---|---|---|
-| STRONGBOX (Titan M2) | 100 | 41.5 | 49.8 | 53.5 | 55.9 | 58.8 |
-| TRUSTED_ENVIRONMENT (llave de prueba) | 100 | 5.4 | 8.1 | 12.2 | 12.6 | 15.7 |
+| STRONGBOX (Titan M2) | 100 | 38.9–41.5 | 49.6–49.8 | 53.5–53.7 | 55.3–55.9 | 55.3–58.8 |
+| TRUSTED_ENVIRONMENT (llave de prueba) | 100 | 4.8–5.4 | 7.9–8.1 | 9.4–12.2 | 10.9–12.6 | 11.9–15.7 |
 
-Datos del Pixel 9a, API 37, 2026-09-30 11:12, con 10 firmas de calentamiento. Fuente:
-`docs/evidencias/latencia_firma_2026-09-30.txt`.
+Pixel 9a, API 37. Dos corridas el 2026-09-30 (11:12 y 12:00), cada una con 10 firmas de
+calentamiento y 100 medidas por nivel. Cada celda muestra el rango entre las dos
+corridas. Fuente: `docs/evidencias/latencia_firma_2026-09-30.txt`, que contiene las dos.
 
 **Lo que muestran los datos:**
-- En la mediana, StrongBox tarda unas 6 veces lo que tarda el TEE (49.8 contra
-  8.1 ms). En valor absoluto, son unos 42 ms más por canje en p50 y unos 41 ms en p95.
-- La dispersión de StrongBox es baja: de 41.5 a 58.8 ms, sin colas largas en la muestra.
+- En la mediana, StrongBox tarda unas 6 veces lo que tarda el TEE (49.6–49.8 contra
+  7.9–8.1 ms). En valor absoluto, son unos 42 ms más por canje en p50.
+- StrongBox es estable entre corridas: la mediana varía 0.2 ms. Su dispersión es baja y
+  no hay colas largas, con un máximo de 58.8 ms.
 
-**Todavía no se puede concluir** si ese costo es aceptable. Depende del tiempo total de
-registro por alumno (métrica 3 de la sección 9), que aún no se mide.
+**Conclusión: se mantiene StrongBox.** Cuesta unos 6 veces más que el TEE, pero son
+unos 50 ms por canje. Se considera imperceptible frente al tiempo total del canje, que
+además de la firma incluye:
+- detectar el QR con la cámara;
+- el viaje de ida y vuelta por la red;
+- la verificación y la escritura en Neo4j del lado del servidor.
+
+A cambio, la llave vive en un elemento seguro aparte del procesador principal, más
+resistente a ataques físicos (entrada 2026-09-29).
+
+La afirmación de que el costo es imperceptible se apoya en la escala de los otros
+pasos, **no en una medición del canje completo**. Se confirma cuando exista la métrica
+3 de la sección 9 (tiempo de registro por alumno). Si esa métrica mostrara que la firma
+pesa de forma apreciable, cambiar a TEE es quitar `setIsStrongBoxBacked` en
+`LlaveDispositivo`.
 
 [PENDIENTE: muestras `canje firma_ms` del flujo real; la evidencia actual solo contiene
 la prueba instrumentada.]
