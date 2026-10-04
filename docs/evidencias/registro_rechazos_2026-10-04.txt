@@ -1,0 +1,54 @@
+# probar_registro_rechazos.py — 2026-10-04T13:29:57-06:00
+== /login
+OK  falta password: esperado 400/solicitud_invalida, obtenido 400/solicitud_invalida nodos=1 alumno_id=None rol=None huella=None
+OK  password incorrecto, matricula existente: esperado 401/credenciales_invalidas, obtenido 401/credenciales_invalidas nodos=1 alumno_id=SIM0002 rol=objetivo_login huella=None
+OK  matricula inexistente: no se guarda: esperado 401/credenciales_invalidas, obtenido 401/credenciales_invalidas nodos=1 alumno_id=None rol=None huella=None
+OK  intento previo al bloqueo por matricula: esperado 401/credenciales_invalidas, obtenido 401/credenciales_invalidas nodos=1 alumno_id=SIM0002 rol=objetivo_login huella=None
+OK  intento previo al bloqueo por matricula: esperado 401/credenciales_invalidas, obtenido 401/credenciales_invalidas nodos=1 alumno_id=SIM0002 rol=objetivo_login huella=None
+OK  intento previo al bloqueo por matricula: esperado 401/credenciales_invalidas, obtenido 401/credenciales_invalidas nodos=1 alumno_id=SIM0002 rol=objetivo_login huella=None
+OK  intento previo al bloqueo por matricula: esperado 401/credenciales_invalidas, obtenido 401/credenciales_invalidas nodos=1 alumno_id=SIM0002 rol=objetivo_login huella=None
+OK  bloqueo por matricula: esperado 429/login_bloqueado_matricula, obtenido 429/login_bloqueado_matricula nodos=1 alumno_id=None rol=None huella=None
+OK  50 fallos desde una IP: ultimo 401
+OK  bloqueo por IP: esperado 429/login_bloqueado_ip, obtenido 429/login_bloqueado_ip nodos=1 alumno_id=None rol=None huella=None
+== /cambiar_password
+OK  sin Bearer: esperado 401/no_autenticado, obtenido 401/no_autenticado nodos=1 alumno_id=None rol=None huella=None
+OK  Bearer sin formato de token: esperado 401/token_invalido, obtenido 401/token_invalido nodos=1 alumno_id=None rol=None huella=None
+OK  HMAC invalido con matricula ajena: sin alumno_id: esperado 401/token_invalido, obtenido 401/token_invalido nodos=1 alumno_id=None rol=None huella=None
+OK  token completo en endpoint de cambiar_password: esperado 403/alcance_insuficiente, obtenido 403/alcance_insuficiente nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=None
+OK  token expirado (HMAC valido): esperado 401/token_expirado, obtenido 401/token_expirado nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=None
+OK  sesion revocada por login posterior: esperado 401/sesion_cerrada, obtenido 401/sesion_cerrada nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=None
+OK  password nuevo demasiado corto: esperado 400/solicitud_invalida, obtenido 400/solicitud_invalida nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=None
+== /dispositivos/registrar
+OK  sin Bearer: guarda la huella recibida: esperado 401/no_autenticado, obtenido 401/no_autenticado nodos=1 alumno_id=None rol=None huella=sintetica-huella-rec
+OK  llave que no es P-256: esperado 400/solicitud_invalida, obtenido 400/solicitud_invalida nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=sintetica-huella-rec
+OK  huella de 300 caracteres: se guarda recortada a 256: esperado 400/solicitud_invalida, obtenido 400/solicitud_invalida nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=hhhhhhhhhhhhhhhhhhhh
+OK  preparacion: enrolar llave local para SIM0001, obtenido 201
+== canje (/?token=...)
+OK  sin parametro token: esperado 400/solicitud_invalida, obtenido 400/solicitud_invalida nodos=1 alumno_id=None rol=None huella=None
+OK  navegador: sin encabezados: esperado 401/no_autenticado, obtenido 401/no_autenticado nodos=1 alumno_id=None rol=None huella=None
+OK  sesion valida sin X-SIGNATURE: esperado 401/encabezados_faltantes, obtenido 401/encabezados_faltantes nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=None
+OK  X-TIMESTAMP no entero: esperado 401/timestamp_fuera_ventana, obtenido 401/timestamp_fuera_ventana nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=None
+OK  timestamp -120 s con firma correcta: esperado 401/timestamp_fuera_ventana, obtenido 401/timestamp_fuera_ventana nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=None
+OK  firma de llave no enrolada: esperado 401/firma_invalida, obtenido 401/firma_invalida nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=sintetica-huella-rec
+OK  encabezados saneados: solo presencia de Authorization/X-SIGNATURE, {'Authorization_presente': True, 'Cookie_presente': False, 'User-Agent': 'Werkzeug/3.1.8', 'X-SIGNATURE_presente': True, 'X-TIMESTAMP': '1791142206'}
+OK  token_qr_hash es el prefijo de SHA-256 del token QR
+OK  sesion_id es el prefijo de SHA-256 del token de sesion
+OK  alumno sin dispositivo activo: esperado 403/sin_dispositivo_activo, obtenido 403/sin_dispositivo_activo nodos=1 alumno_id=SIM0003 rol=titular_sesion huella=None
+OK  token QR inexistente (GET): esperado 404/token_qr_inexistente, obtenido 404/token_qr_inexistente nodos=1 alumno_id=None rol=None huella=None
+Señal socket enviada a PC1
+OK  canje valido: 200 y sin nodo de rechazo
+OK  replay autenticado: esperado 409/token_reutilizado, obtenido 409/token_reutilizado nodos=1 alumno_id=SIM0001 rol=titular_sesion huella=sintetica-huella-rec
+OK  GET de token usado (warning.html): esperado 200/token_reutilizado, obtenido 200/token_reutilizado nodos=1 alumno_id=None rol=None huella=None
+== X-Id-Prueba
+OK  misma respuesta con, sin y con X-Id-Prueba invalido: [(401, {'error': 'Falta encabezado Authorization Bearer'}), (401, {'error': 'Falta encabezado Authorization Bearer'}), (401, {'error': 'Falta encabezado Authorization Bearer'})]
+OK  X-Id-Prueba invalido no se guarda: [{'id': None}, {'id': None}, {'id': 'f65c1a8d1dc5459f000051'}]
+== secretos y cobertura
+OK  82 nodos revisados contra 16 secretos; fugas: []
+OK  los 15 motivos del catalogo aparecen; faltan: []
+
+39/39 verificaciones correctas
+
+# Regresion — 2026-10-04T13:40:22-06:00
+probar_canje_firmado.py: 9/9 verificaciones correctas
+probar_registro_dispositivo.py: 17/17 verificaciones correctas
+IntentoRechazado restantes tras las tres pruebas: 0

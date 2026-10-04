@@ -811,3 +811,211 @@ la prueba instrumentada.]
   enrola una llave local e invalida la sesión de SIM0001. Después de correrlo, el
   teléfono de pruebas recibe 401 en su siguiente canje y debe iniciar sesión de nuevo.
   Es el camino de recuperación esperado.
+
+---
+
+## 2026-10-04 — Registro de intentos rechazados (punto de cambio 7)
+
+### Decisión
+
+Cada rechazo de `/login`, `/cambiar_password`, `/dispositivos/registrar` y el canje
+(`/?token=...`) crea un nodo `(:IntentoRechazado)` en Neo4j. El nodo es aditivo: no
+se relaciona con `Token`, `Alumno` ni `Dispositivo`, y no se modificó ninguna
+función que los escriba.
+
+```
+(:IntentoRechazado {motivo, endpoint, metodo, status_http,
+                    marca_tiempo, fecha, ip_origen,
+                    huella_dispositivo?, alumno_id?, rol_alumno?,
+                    sesion_id?, token_qr_hash?, encabezados, id_prueba?})
+```
+
+- `marca_tiempo` es el epoch del servidor (`time.time()`), indexado para consultas
+  por rango; `fecha` es la misma marca en ISO, por legibilidad.
+- Índices sobre `motivo`, `marca_tiempo` e `id_prueba` (`rechazos.asegurar_esquema_rechazos`,
+  se crea al arrancar junto con el esquema de identidad).
+
+**Implementación:** módulo nuevo `backend/rechazos.py` (catálogo, saneamiento y
+escritura) y una función `rechazar(motivo, status, respuesta)` en `server.py` que
+registra y devuelve la misma respuesta de antes. **Ningún código de estado ni cuerpo
+de respuesta cambió**; la app no se entera del registro.
+
+- `verificar_token_sesion` y `verificar_canje` devuelven ahora el motivo como tercer
+  elemento de la tupla de error. Se ajustaron los tres lugares que la desempaquetan.
+- El contexto que se resuelve a mitad de la petición (`alumno_id`, `rol_alumno`,
+  `huella_dispositivo`) viaja en `flask.g`, que vive solo durante la petición. Así no
+  hubo que cambiar las firmas de las funciones para pasarlo de mano en mano.
+- Si la escritura del registro falla, se imprime en stderr y se responde igual: un
+  fallo del registro no debe convertir un 401 en un 500.
+
+### Catálogo de motivos
+
+Se fijan 15 motivos, cerrados en `rechazos.MOTIVOS`: un motivo fuera de la lista
+lanza error en lugar de guardarse. Los 12 originales más tres que aparecieron al
+recorrer el código real, porque había rechazos que no cabían en ninguno:
+`alcance_insuficiente`, `solicitud_invalida` y `token_qr_inexistente`.
+
+| Motivo | Dónde | Respuesta |
+|---|---|---|
+| `solicitud_invalida` | Todos los 400: `/login` sin matrícula o password; `/cambiar_password` con contraseña corta o igual a la actual; `/dispositivos/registrar` sin llave, sin huella, huella > 256 o llave no P-256; canje sin `?token=` o `Alumno` sin nombre | 400 |
+| `login_bloqueado_matricula` | `/login` con `BloqueoLogin` vigente por matrícula (gana si también hay bloqueo por IP) | 429 |
+| `login_bloqueado_ip` | `/login` con `BloqueoLogin` vigente solo por IP | 429 |
+| `credenciales_invalidas` | `/login` con matrícula inexistente o password incorrecto | 401 |
+| `no_autenticado` | Falta `Authorization: Bearer` (o viene vacío) | 401 |
+| `token_invalido` | Token de sesión sin el formato de `/login` o con HMAC inválido | 401 |
+| `token_expirado` | Token de sesión con HMAC válido y vencido | 401 |
+| `alcance_insuficiente` | Token de alcance distinto al que exige el endpoint | 403 |
+| `sesion_cerrada` | Token válido pero revocado (otro login o cambio de contraseña) | 401 |
+| `encabezados_faltantes` | Canje sin `X-TIMESTAMP` o sin `X-SIGNATURE` | 401 |
+| `timestamp_fuera_ventana` | Canje con `X-TIMESTAMP` no entero o fuera de ±60 s | 401 |
+| `sin_dispositivo_activo` | Canje de un alumno sin `Dispositivo` activo | 403 |
+| `firma_invalida` | Canje con firma ECDSA que no verifica contra el dispositivo activo | 401 |
+| `token_qr_inexistente` | Canje (GET o POST) de un token QR que no existe | 404 |
+| `token_reutilizado` | Token QR ya usado: POST autenticado (409) y GET de navegador (`warning.html`) | 409 / 200 |
+
+- `token_invalido` se refiere solo al token de **sesión**; el token **QR** que no
+  existe tiene su propio motivo. Juntarlos mezclaría "alguien falsificó una sesión"
+  con "alguien escaneó un QR viejo o inventado", que son ataques distintos.
+- El GET de un token ya usado responde 200 al navegador (sin cambios), pero se
+  registra como `token_reutilizado`: es un reuso aunque el código no lo diga.
+- Un `X-TIMESTAMP` que no es entero cae en `timestamp_fuera_ventana` y no en
+  `encabezados_faltantes`: el encabezado sí vino, pero no representa un instante
+  dentro de la ventana.
+
+### Qué se guarda y qué nunca
+
+- **Encabezados, por lista blanca.** Se guardan los valores de `User-Agent`,
+  `Accept-Language`, `Content-Type`, `Origin`, `Referer`, `X-Forwarded-For`,
+  `CF-Connecting-IP` y `X-TIMESTAMP`, recortados a 256 caracteres. De `Authorization`,
+  `X-SIGNATURE` y `Cookie` solo se guarda si venían (`*_presente: true/false`).
+  Neo4j no admite mapas como propiedad, así que van como texto JSON.
+- **El cuerpo de la petición no se guarda nunca.** Por eso ninguna contraseña puede
+  colarse, ni la del login ni la nueva de `/cambiar_password`.
+- **Ningún token en crudo.** `sesion_id` y `token_qr_hash` son los primeros 16
+  hexadecimales de SHA-256 del token de sesión y del token QR. Sirven para
+  correlacionar intentos (el mismo token QR atacado varias veces, la misma sesión
+  insistiendo) sin poder reconstruir el valor.
+- **`huella_dispositivo`:** en `/dispositivos/registrar` se toma del cuerpo aunque el
+  rechazo sea de autenticación, porque el dato se recibió. En el canje la app no
+  la envía, así que solo aparece cuando ya se leyó el `Dispositivo` activo (es decir,
+  en `firma_invalida` y `token_reutilizado`).
+- **`ip_origen`** es `request.remote_addr`, el mismo dato que usa `BloqueoLogin`.
+
+### Por qué `alumno_id` no se atribuye cuando el HMAC falla
+
+El token de sesión lleva la matrícula en claro (`matricula.alcance.expira_en.firma`).
+Antes de verificar la firma HMAC, esa matrícula es texto que cualquiera puede
+escribir: un atacante podría mandar miles de tokens falsos con la matrícula de un
+compañero, y si el registro la tomara como `alumno_id`, el conjunto de datos de la
+tesis mostraría a ese compañero como autor de un ataque que nunca hizo. Eso
+contaminaría justo las reglas de anomalía del 2026-09-12, que cuentan intentos por
+alumno. Por eso `alumno_id` solo se llena **después** de que el HMAC verifica: en ese
+punto la matrícula está firmada por el servidor y es confiable aunque el token haya
+expirado, tenga otro alcance o esté revocado. La prueba lo verifica con un token
+falsificado que lleva la matrícula SIM0003 y HMAC inválido: el nodo queda sin
+`alumno_id`.
+
+`rol_alumno` distingue los dos únicos casos en que se atribuye:
+
+- `titular_sesion`: la matrícula salió de un token con HMAC válido.
+- `objetivo_login`: en `/login` con credenciales inválidas, si la matrícula escrita
+  **existe**. Es el blanco del intento, no su autor. Si no existe, no se guarda, para
+  no almacenar matrículas reales mal tecleadas.
+
+### `X-Id-Prueba`: instrumentación de laboratorio
+
+`X-Id-Prueba` es un encabezado **opcional** que manda el banco de ataques en cada
+petición. **El servidor nunca lo usa para decidir si acepta o rechaza**: solo lo
+guarda como etiqueta en `id_prueba`, si es hexadecimal en minúsculas de hasta 64
+caracteres (si no, se descarta). La prueba lo verifica mandando la misma petición
+sin el encabezado, con un valor inválido y con uno válido: las tres respuestas son
+idénticas.
+
+Que un atacante real pueda mandarlo no le da nada: no cambia la decisión, y una
+etiqueta inventada solo afectaría a una corrida del banco cuyo manifiesto no la
+contiene, así que el script de métricas la ignora.
+
+### Métricas: `backend/scripts/metricas_deteccion.py`
+
+La tasa de detección y la de falsos positivos no se pueden calcular solo con los
+rechazos: hace falta saber cuántas peticiones se mandaron y cuáles eran ataque. Eso
+lo aporta un manifiesto JSONL que escribe el banco de ataques, una línea por
+petición: `{id_prueba, escenario, clase: "ataque"|"legitimo", motivo_esperado}`.
+
+- Una petición del manifiesto con nodo `IntentoRechazado` se cuenta como rechazada;
+  sin nodo, como aceptada. No hace falta registrar las peticiones aceptadas.
+- **Detección:** ataques rechazados / ataques enviados, global y por escenario.
+- **Falsos positivos:** legítimas rechazadas / legítimas enviadas, global, por
+  escenario y por motivo (qué control rechazó tráfico legítimo).
+- Por escenario también se reporta si el motivo registrado coincide con el
+  esperado: un ataque puede quedar detenido por un control distinto al que se
+  pretendía probar, y eso es un hallazgo.
+- Cada tasa lleva un intervalo de confianza de Wilson al 95 %, porque el banco manda
+  decenas de peticiones por escenario y no miles. [PENDIENTE: cita del intervalo de
+  Wilson]
+- Sin manifiesto, el script solo da conteos por motivo y endpoint en un rango de
+  fechas, y lo dice en la salida.
+- Salida en `docs/evidencias/metricas_deteccion_<fecha>_<hora>.txt` y `.json`.
+
+Se probó con un manifiesto sintético de 13 peticiones (en un directorio temporal,
+no en `docs/evidencias/`): 7/8 ataques detectados y 1/5 legítimas rechazadas,
+iguales al conteo a mano.
+
+### Verificación
+
+`backend/tests/probar_registro_rechazos.py` (test_client de Flask, Neo4j real,
+alumnos sintéticos SIM0001–SIM0003). Salida en
+`docs/evidencias/registro_rechazos_2026-10-04.txt`: **39/39**.
+
+- Provoca los 15 motivos y comprueba, por cada uno, que hay exactamente un nodo con
+  motivo, endpoint, status, IP, `alumno_id`, `rol_alumno` y huella esperados.
+- Comprueba que el canje válido no deja nodo.
+- Revisa todas las propiedades de los 82 nodos de la corrida contra los 16 valores
+  secretos que mandó (contraseñas, tokens de sesión, tokens QR, firmas): ninguna
+  aparece.
+- Los bloqueos de login usan SIM0002 e IPs de documentación (RFC 5737), para no
+  bloquear la cuenta del teléfono de pruebas.
+
+**Limpieza:** la prueba borra sus nodos, los `BloqueoLogin` y los `Token` que creó.
+`probar_canje_firmado.py` y `probar_registro_dispositivo.py` ahora también generaban
+nodos `IntentoRechazado`; se ajustaron para usar una IP de documentación propia y
+borrarlos al final. Siguen en 9/9 y 17/17, y tras las tres pruebas el grafo queda con
+0 nodos `IntentoRechazado`.
+
+### Límites conocidos
+
+- **Todas las pruebas salen de la misma máquina.** `ip_origen` será casi siempre la
+  misma (y detrás del túnel, la del túnel), así que el contador de `BloqueoLogin` por
+  IP no se puede evaluar de forma realista: o nunca se dispara, o se dispara para
+  todos a la vez. Evaluarlo exige varias fuentes reales o simular orígenes con
+  `X-Forwarded-For`, lo que a su vez requiere que el servidor confíe en ese
+  encabezado solo detrás de un proxy conocido. Hoy se guarda pero no se usa. En las
+  pruebas, la IP se simula con `REMOTE_ADDR` del test_client.
+- **Solo se registran los rechazos.** El punto de cambio 7 decía "rechazado o no";
+  los intentos aceptados quedan fuera de esta tarea. Para las tasas no hacen falta
+  (se infieren del manifiesto), pero las reglas de anomalía que miran canjes
+  exitosos (misma huella con varias matrículas) siguen leyendo el nodo `Token`.
+- **`/get_token` no se registra.** No estaba entre los cuatro endpoints de la tarea.
+- **Token de sesión con caracteres no ASCII → 500 sin registro.** Verificado el
+  2026-10-04: `hmac.compare_digest` lanza `TypeError` al comparar cadenas no ASCII,
+  así que un `Bearer` con, por ejemplo, `á` produce un error 500 y no llega a
+  registrarse. Es previo a esta tarea y no permite autenticarse, pero es un rechazo
+  que se escapa del conjunto de datos. La corrección propuesta (no implementada,
+  porque toca la verificación de sesión) es comparar bytes
+  (`firma_recibida.encode("utf-8")`) o rechazar antes como `token_invalido` todo
+  token no ASCII. Lo mismo aplica a `/get_token`.
+- **Una escritura por rechazo.** Una inundación de peticiones hace crecer el grafo
+  sin límite, y cada rechazo suma una transacción a la latencia que medirán las
+  pruebas de carga de la sección 9. No hay retención ni muestreo; queda como trabajo
+  futuro.
+- **Los 429 no llevan `alumno_id`.** El bloqueo se revisa antes de buscar al alumno y
+  no se quiso reordenar `/login` solo para el registro. La matrícula bloqueada se
+  puede reconstruir desde `BloqueoLogin` en la misma ventana.
+- **Fallo silencioso del registro.** Si Neo4j rechaza la escritura, el rechazo se
+  responde pero no queda en el conjunto de datos (solo en stderr). Se prefirió eso a
+  responder 500.
+- **`solicitud_invalida` por contraseña igual a la actual** no se ejercita en la
+  prueba, porque exigiría conocer la contraseña vigente de un alumno sintético; usa
+  el mismo `rechazar` que el caso de contraseña corta, que sí se prueba.
+- **`ruff` sigue sin estar instalado**; el formato del código nuevo no se verificó
+  con esa herramienta.

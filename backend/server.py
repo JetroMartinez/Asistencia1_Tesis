@@ -1,9 +1,10 @@
 import os
+import sys
 import uuid
 import secrets
 from   datetime       import datetime
 from   dotenv         import load_dotenv
-from   flask          import Flask, jsonify, request, render_template, make_response
+from   flask          import Flask, jsonify, request, render_template, make_response, g
 from   flask_socketio import SocketIO
 from   neo4j          import GraphDatabase
 from   werkzeug.security import check_password_hash, generate_password_hash
@@ -18,6 +19,7 @@ from   cryptography.hazmat.primitives            import hashes, serialization
 from   cryptography.hazmat.primitives.asymmetric import ec
 
 import identidad
+import rechazos
 
 
 
@@ -53,6 +55,7 @@ DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_hex(32))
 
 with driver.session() as session:
     session.execute_write(identidad.asegurar_esquema_identidad)
+    session.execute_write(rechazos.asegurar_esquema_rechazos)
 
 
 
@@ -100,6 +103,41 @@ def increment_token_warnings(tx, token):
     result = tx.run(query, token=token)
     record = result.single()
     return record['warnings'] if record else 0
+
+
+def rechazar(motivo, status, respuesta):
+    """Registra el rechazo en (:IntentoRechazado) y devuelve (respuesta, status)
+    sin cambiarla. El contexto que ya se resolvio en la peticion llega por g:
+    alumno_id y rol_alumno (solo si se pudo atribuir) y huella_dispositivo."""
+    auth_header = request.headers.get("Authorization", "")
+    sesion      = auth_header[len("Bearer "):] if auth_header.startswith("Bearer ") else None
+    token_qr    = request.args.get("token") if request.path == "/" else None
+
+    datos = {
+        "motivo":             motivo,
+        "endpoint":           request.path,
+        "metodo":             request.method,
+        "status_http":        status,
+        "marca_tiempo":       time.time(),
+        "fecha":              datetime.now().isoformat(),
+        "ip_origen":          request.remote_addr,
+        "alumno_id":          g.get("alumno_id"),
+        "rol_alumno":         g.get("rol_alumno"),
+        "huella_dispositivo": rechazos.recortar(g.get("huella_dispositivo")),
+        # Nunca en crudo: solo un prefijo de SHA-256 para correlacionar
+        "sesion_id":          rechazos.huella_corta(sesion) if sesion else None,
+        "token_qr_hash":      rechazos.huella_corta(token_qr) if token_qr else None,
+        "encabezados":        rechazos.sanear_encabezados(request.headers),
+        "id_prueba":          rechazos.id_prueba_valido(request.headers.get("X-Id-Prueba")),
+    }
+    try:
+        with driver.session() as session:
+            session.execute_write(rechazos.registrar_rechazo, datos)
+    except Exception as e:
+        # Un fallo del registro no debe convertir un 401 en un 500
+        print(f"No se pudo registrar el rechazo {motivo}: {type(e).__name__}: {e}",
+              file=sys.stderr)
+    return respuesta, status
 
 
 
@@ -152,7 +190,8 @@ def login():
     password  = data.get("password")
 
     if not matricula or not password:
-        return jsonify({"error": "Faltan matricula o password"}), 400
+        return rechazar("solicitud_invalida", 400,
+                        jsonify({"error": "Faltan matricula o password"}))
 
     ahora           = time.time()
     ip_address      = request.remote_addr
@@ -163,7 +202,9 @@ def login():
         bloqueado_matricula = session.execute_read(identidad.esta_bloqueado, clave_matricula, ahora)
         bloqueado_ip        = session.execute_read(identidad.esta_bloqueado, clave_ip, ahora)
         if bloqueado_matricula or bloqueado_ip:
-            return jsonify({"error": "Demasiados intentos. Intenta de nuevo mas tarde."}), 429
+            motivo = "login_bloqueado_matricula" if bloqueado_matricula else "login_bloqueado_ip"
+            return rechazar(motivo, 429,
+                            jsonify({"error": "Demasiados intentos. Intenta de nuevo mas tarde."}))
 
         alumno            = session.execute_read(identidad.obtener_alumno, matricula)
         tiene_dispositivo = session.execute_read(identidad.tiene_dispositivo_activo, matricula)
@@ -189,7 +230,12 @@ def login():
                         identidad.marcar_bloqueo, clave_ip, ahora + DURACION_BLOQUEO_SEGUNDOS
                     )
 
-            return jsonify({"error": "Matricula o password incorrectos"}), 401
+            # Solo si la matricula existe: es el blanco del intento, no su autor
+            if alumno:
+                g.alumno_id  = matricula
+                g.rol_alumno = "objetivo_login"
+            return rechazar("credenciales_invalidas", 401,
+                            jsonify({"error": "Matricula o password incorrectos"}))
 
         session.execute_write(identidad.limpiar_intentos, clave_matricula)
 
@@ -216,34 +262,39 @@ def login():
 
 def verificar_token_sesion(token, alcance_requerido):
     """Verifica un token de sesion de /login. Devuelve (matricula, None) si es
-    valido para alcance_requerido, o (None, (mensaje, status)) si no."""
+    valido para alcance_requerido, o (None, (mensaje, status, motivo)) si no.
+    Cuando el HMAC verifica, deja la matricula en g.alumno_id para el registro
+    de rechazos; antes de eso la matricula del token no es confiable."""
     if not token:
-        return None, ("Falta el token de sesion", 401)
+        return None, ("Falta el token de sesion", 401, "no_autenticado")
 
     try:
         payload, firma_recibida = token.rsplit(".", 1)
         matricula, alcance, expira_en_str = payload.split(".", 2)
         expira_en = float(expira_en_str)
     except ValueError:
-        return None, ("Token con formato invalido", 401)
+        return None, ("Token con formato invalido", 401, "token_invalido")
 
     secret = os.getenv("API_SECRET")
     firma_esperada = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(firma_recibida, firma_esperada):
-        return None, ("Firma invalida", 401)
+        return None, ("Firma invalida", 401, "token_invalido")
+
+    g.alumno_id  = matricula
+    g.rol_alumno = "titular_sesion"
 
     if time.time() > expira_en:
-        return None, ("Token expirado", 401)
+        return None, ("Token expirado", 401, "token_expirado")
 
     if alcance != alcance_requerido:
-        return None, ("Alcance insuficiente para este endpoint", 403)
+        return None, ("Alcance insuficiente para este endpoint", 403, "alcance_insuficiente")
 
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     with driver.session() as session:
         alumno = session.execute_read(identidad.obtener_alumno, matricula)
 
     if not alumno or alumno.get("sesion_token_hash") != token_hash:
-        return None, ("Sesion invalida o revocada", 401)
+        return None, ("Sesion invalida o revocada", 401, "sesion_cerrada")
 
     return matricula, None
 
@@ -252,26 +303,28 @@ def verificar_token_sesion(token, alcance_requerido):
 def cambiar_password():
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-        return jsonify({"error": "Falta encabezado Authorization Bearer"}), 401
+        return rechazar("no_autenticado", 401,
+                        jsonify({"error": "Falta encabezado Authorization Bearer"}))
     token = auth_header[len("Bearer "):]
 
     matricula, error = verificar_token_sesion(token, "cambiar_password")
     if error:
-        mensaje, status = error
-        return jsonify({"error": mensaje}), status
+        mensaje, status, motivo = error
+        return rechazar(motivo, status, jsonify({"error": mensaje}))
 
     data           = request.get_json(silent=True) or {}
     password_nuevo = data.get("password_nuevo")
 
     if not password_nuevo or len(password_nuevo) < LONGITUD_MINIMA_PASSWORD:
-        return jsonify({
+        return rechazar("solicitud_invalida", 400, jsonify({
             "error": f"La contrasena debe tener al menos {LONGITUD_MINIMA_PASSWORD} caracteres"
-        }), 400
+        }))
 
     with driver.session() as session:
         alumno = session.execute_read(identidad.obtener_alumno, matricula)
         if check_password_hash(alumno["password_hash"], password_nuevo):
-            return jsonify({"error": "La contrasena nueva no puede ser igual a la actual"}), 400
+            return rechazar("solicitud_invalida", 400, jsonify(
+                {"error": "La contrasena nueva no puede ser igual a la actual"}))
 
         password_hash = generate_password_hash(password_nuevo)
         session.execute_write(identidad.actualizar_password, matricula, password_hash)
@@ -301,34 +354,38 @@ def cargar_llave_publica_p256(texto: str) -> ec.EllipticCurvePublicKey | None:
 
 @app.route('/dispositivos/registrar', methods=['POST'])
 def registrar_dispositivo():
+    data               = request.get_json(silent=True) or {}
+    llave_texto        = data.get("llave_publica")
+    huella_dispositivo = data.get("huella_dispositivo")
+    # Se registra la huella recibida aunque el rechazo sea de autenticacion
+    g.huella_dispositivo = huella_dispositivo
+
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-        return jsonify({"error": "Falta encabezado Authorization Bearer"}), 401
+        return rechazar("no_autenticado", 401,
+                        jsonify({"error": "Falta encabezado Authorization Bearer"}))
     token = auth_header[len("Bearer "):]
 
     matricula, error = verificar_token_sesion(token, "completo")
     if error:
-        mensaje, status = error
-        return jsonify({"error": mensaje}), status
-
-    data               = request.get_json(silent=True) or {}
-    llave_texto        = data.get("llave_publica")
-    huella_dispositivo = data.get("huella_dispositivo")
+        mensaje, status, motivo = error
+        return rechazar(motivo, status, jsonify({"error": mensaje}))
 
     if not isinstance(llave_texto, str) or not llave_texto:
-        return jsonify({"error": "Falta llave_publica"}), 400
+        return rechazar("solicitud_invalida", 400, jsonify({"error": "Falta llave_publica"}))
     if not isinstance(huella_dispositivo, str) or not huella_dispositivo:
-        return jsonify({"error": "Falta huella_dispositivo"}), 400
+        return rechazar("solicitud_invalida", 400,
+                        jsonify({"error": "Falta huella_dispositivo"}))
     if len(huella_dispositivo) > LONGITUD_MAXIMA_HUELLA:
-        return jsonify({
+        return rechazar("solicitud_invalida", 400, jsonify({
             "error": f"huella_dispositivo excede {LONGITUD_MAXIMA_HUELLA} caracteres"
-        }), 400
+        }))
 
     llave = cargar_llave_publica_p256(llave_texto)
     if llave is None:
-        return jsonify({
+        return rechazar("solicitud_invalida", 400, jsonify({
             "error": "La llave debe ser una llave publica EC P-256 (PEM o DER base64)"
-        }), 400
+        }))
 
     # Se guarda siempre normalizada a PEM SubjectPublicKeyInfo, para que la
     # verificacion ECDSA del canje lea un solo formato.
@@ -349,10 +406,10 @@ def registrar_dispositivo():
 def verificar_canje(token_qr):
     """Verifica sesion completa y firma ECDSA del dispositivo activo sobre
     f"{timestamp}/asistencia:{token_qr}". Devuelve (alumno, None) si pasa,
-    o (None, (mensaje, status)) si no."""
+    o (None, (mensaje, status, motivo)) si no."""
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-        return None, ("Falta encabezado Authorization Bearer", 401)
+        return None, ("Falta encabezado Authorization Bearer", 401, "no_autenticado")
 
     matricula, error = verificar_token_sesion(auth_header[len("Bearer "):], "completo")
     if error:
@@ -361,22 +418,27 @@ def verificar_canje(token_qr):
     timestamp = request.headers.get("X-TIMESTAMP")
     firma_b64 = request.headers.get("X-SIGNATURE")
     if not timestamp or not firma_b64:
-        return None, ("Faltan encabezados X-TIMESTAMP o X-SIGNATURE", 401)
+        return None, ("Faltan encabezados X-TIMESTAMP o X-SIGNATURE", 401,
+                      "encabezados_faltantes")
 
     try:
         timestamp = int(timestamp)
     except ValueError:
-        return None, ("Timestamp invalido", 401)
+        return None, ("Timestamp invalido", 401, "timestamp_fuera_ventana")
 
     if abs(int(time.time()) - timestamp) > VENTANA_CANJE_SEGUNDOS:
-        return None, ("Timestamp fuera de la ventana permitida", 401)
+        return None, ("Timestamp fuera de la ventana permitida", 401, "timestamp_fuera_ventana")
 
     with driver.session() as session:
         alumno      = session.execute_read(identidad.obtener_alumno, matricula)
         dispositivo = session.execute_read(identidad.obtener_dispositivo_activo, matricula)
 
     if not dispositivo:
-        return None, ("No hay un dispositivo activo registrado para esta matricula", 403)
+        return None, ("No hay un dispositivo activo registrado para esta matricula", 403,
+                      "sin_dispositivo_activo")
+
+    # La app no manda la huella en el canje: se toma del dispositivo activo
+    g.huella_dispositivo = dispositivo["huella_dispositivo"]
 
     # La llave se guardo normalizada a PEM en /dispositivos/registrar. La firma
     # llega en DER base64, el formato de Signature("SHA256withECDSA") en Android.
@@ -386,7 +448,7 @@ def verificar_canje(token_qr):
         llave.verify(base64.b64decode(firma_b64, validate=True), mensaje,
                      ec.ECDSA(hashes.SHA256()))
     except (InvalidSignature, binascii.Error, ValueError):
-        return None, ("Firma de dispositivo invalida", 401)
+        return None, ("Firma de dispositivo invalida", 401, "firma_invalida")
 
     return alumno, None
 
@@ -395,7 +457,7 @@ def verificar_canje(token_qr):
 def process_checkin():
     token = request.args.get('token')
     if not token:
-        return "Error: Token no proporcionado.", 400
+        return rechazar("solicitud_invalida", 400, "Error: Token no proporcionado.")
 
     ip_address   = request.remote_addr
     current_date = datetime.now().isoformat()
@@ -409,14 +471,14 @@ def process_checkin():
     if request.method == 'POST':
         alumno, error = verificar_canje(token)
         if error:
-            mensaje, status = error
-            return jsonify({"error": mensaje}), status
+            mensaje, status, motivo = error
+            return rechazar(motivo, status, jsonify({"error": mensaje}))
 
     # Token status
     with driver.session() as session:
         status_record = session.execute_read(get_token_status, token)
         if not status_record:
-            return "Error: Token inválido.", 404
+            return rechazar("token_qr_inexistente", 404, "Error: Token inválido.")
         is_used = status_record['used']
 
         if is_used:
@@ -425,10 +487,12 @@ def process_checkin():
             # POST: solo llega aqui si paso verificar_canje (Bearer + X-SIGNATURE).
             # La app necesita un codigo distinto del exito (docs/decisiones.md, 2026-09-30).
             if request.method == 'POST':
-                return jsonify({"error": "token_reutilizado", "warnings": new_warnings}), 409
+                return rechazar("token_reutilizado", 409, jsonify(
+                    {"error": "token_reutilizado", "warnings": new_warnings}))
             response     = make_response(render_template('warning.html', warnings=new_warnings))
             response.set_cookie('user_tracker', user_cookie)
-            return response
+            # El GET de navegador tambien es un reuso, aunque responda 200
+            return rechazar("token_reutilizado", 200, response)
         # send the forms
         if request.method == 'GET':
             response = make_response(render_template('checkin_form.html', token=token))
@@ -441,7 +505,8 @@ def process_checkin():
             matricula = alumno['matricula']
 
             if not nombre or not matricula:
-                return "Error: Faltan nombre o matrícula.", 400
+                # Inconsistencia del nodo Alumno, no del cliente; se registra igual
+                return rechazar("solicitud_invalida", 400, "Error: Faltan nombre o matrícula.")
             data_to_save = {
                 'nombre':    nombre,
                 'matricula': matricula,

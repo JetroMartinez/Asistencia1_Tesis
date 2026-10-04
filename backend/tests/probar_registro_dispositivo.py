@@ -57,6 +57,10 @@ def dispositivos():
 
 
 cliente = server.app.test_client()
+# IP de documentacion (RFC 5737) propia de este script: permite borrar al final
+# los IntentoRechazado que generan sus casos, sin tocar el conjunto de datos real
+IP_PRUEBA = "203.0.113.21"
+cliente.environ_base["REMOTE_ADDR"] = IP_PRUEBA
 p256_a = ec.generate_private_key(ec.SECP256R1()).public_key()
 p256_b = ec.generate_private_key(ec.SECP256R1()).public_key()
 p384 = ec.generate_private_key(ec.SECP384R1()).public_key()
@@ -119,6 +123,7 @@ print(f"{'OK ' if ok else 'FALLA'} los rechazos no cambiaron el dispositivo acti
 # No deja una sesion emitida por este script vigente en SIM0001
 with server.driver.session() as s:
     s.execute_write(identidad.invalidar_sesion, MATRICULA)
+    s.run("MATCH (r:IntentoRechazado {ip_origen: $ip}) DELETE r", ip=IP_PRUEBA)
 
 print(f"\n{sum(resultados)}/{len(resultados)} verificaciones correctas")
 sys.exit(0 if all(resultados) else 1)

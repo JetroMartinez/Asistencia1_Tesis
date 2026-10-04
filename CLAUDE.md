@@ -277,7 +277,7 @@ hallazgo válido de la tesis.
 - [ ] POST /cambiar_password
 - [ ] POST /dispositivos/registrar
 - [ ] Verificación ECDSA en process_checkin
-- [ ] Registro de todo intento rechazado
+- [x] Registro de todo intento rechazado
 - [ ] Android: login, Keystore, firma del canje, EncryptedSharedPreferences
 - [ ] Alta de cuentas desde Excel 
 - [ ] Cerrar o restringir el flujo web de registro

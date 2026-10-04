@@ -89,6 +89,10 @@ def rechazo(nombre, token_qr, headers, form=None):
 
 
 cliente = server.app.test_client()
+# IP de documentacion (RFC 5737) propia de este script: permite borrar al final
+# los IntentoRechazado que generan sus casos, sin tocar el conjunto de datos real
+IP_PRUEBA = "203.0.113.22"
+cliente.environ_base["REMOTE_ADDR"] = IP_PRUEBA
 resultados = []
 tokens_creados = []
 FORM_FALSO = {"nombre": "Suplantador", "matricula": "SIM9999"}
@@ -148,6 +152,7 @@ verificar(f"GET del token usado: warning.html intacto, obtenido {r.status_code},
 with server.driver.session() as s:
     s.run("MATCH (t:Token) WHERE t.token IN $tokens DELETE t", tokens=tokens_creados)
     s.execute_write(identidad.invalidar_sesion, MATRICULA)
+    s.run("MATCH (r:IntentoRechazado {ip_origen: $ip}) DELETE r", ip=IP_PRUEBA)
 
 print(f"\n{sum(resultados)}/{len(resultados)} verificaciones correctas")
 sys.exit(0 if all(resultados) else 1)
