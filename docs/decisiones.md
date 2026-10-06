@@ -1146,3 +1146,107 @@ tras la corrida: 0 alumnos `BANCO*`, 0 `BloqueoLogin` residuales, 240 nodos
   dispare el contador por IP, que no es evaluable de forma realista.
 - **`ruff` sigue sin estar instalado**; el formato del código nuevo no se verificó con
   esa herramienta.
+
+---
+
+## 2026-10-05 — Pruebas de carga del canje con Locust (sección 9, métrica 1)
+
+### Decisión
+
+`backend/scripts/correr_carga.py` mide latencia p50/p95/p99 y tasa de éxito del canje
+autenticado (`POST /?token=...`) con 60 y 90 peticiones concurrentes —el tamaño de
+grupo del protocolo— con Locust, datos sintéticos y Neo4j local. Se instaló
+`locust 2.46.7` en el `.venv` del proyecto (trae `gevent` y `geventhttpclient`); como
+ya se anotó el 2026-09-16, `backend/requirements.txt` no fija las dependencias del
+proyecto, así que la versión se cita contra el `.venv` real.
+
+**Por qué un orquestador y no un `locustfile` suelto.** El canje exige sesión válida y
+firma ECDSA del dispositivo activo (2026-09-24): el generador tiene que crear alumnos,
+sesiones y llaves enroladas *antes* de medir. Además, `server.py` corre sobre
+`eventlet` y Locust sobre `gevent`, y los dos no conviven en el mismo proceso (ambos
+parchean la biblioteca estándar de forma incompatible). Por eso el script:
+
+1. arranca `server.py` como **subproceso aparte** (su propio mundo `eventlet`), o
+   reutiliza uno que ya escuche el puerto 26998;
+2. provisiona con el driver de Neo4j y `identidad.py` directamente (sin importar
+   `server.py`), y enrola cada dispositivo por el endpoint HTTP real
+   `/dispositivos/registrar`;
+3. corre Locust en modo biblioteca (`FastHttpUser`, `wait_time=0`) con N usuarios
+   virtuales, cada uno un alumno distinto que firma y manda su propio canje.
+
+**Modelo de carga: closed-loop.** N usuarios sin pausa mantienen ~N canjes en vuelo a
+la vez; es la lectura de "N peticiones simultáneas" de la sección 9. Cada canje consume
+un token QR de un solo uso de un lote pre-creado; la latencia que reporta Locust es el
+ida y vuelta (servidor + pila local), sin la firma ECDSA del cliente, que ocurre antes
+de enviar. Cada nivel se corrió con un tope de seguridad de 180 s.
+
+### Resultados (2026-10-05)
+
+Fuente: `docs/evidencias/carga_canje_2026-10-05_181850.txt` y `.json`.
+
+| Concurrencia | Peticiones | Éxito | p50 | p95 | p99 | máx | throughput |
+|---|---|---|---|---|---|---|---|
+| 60 | 2714 | 100.0 % | 3900 ms | 6800 ms | 7600 ms | 8377 ms | 15.0 req/s |
+| 90 | 2576 | 100.0 % | 6100 ms | 11000 ms | 12000 ms | 13768 ms | 14.3 req/s |
+
+Los dos niveles agotaron el tope de 180 s antes que el lote de 3000 tokens, así que el
+resultado está acotado por tiempo: se midieron 2714 y 2576 canjes, muestra sobrada para
+los percentiles.
+
+### Lectura de los datos
+
+- **La tasa de éxito es 100 % en los dos niveles.** Ningún canje se rechazó ni se perdió
+  (la limpieza confirmó 0 nodos `IntentoRechazado` de la corrida): bajo carga el sistema
+  no falla, se pone lento.
+- **El throughput está clavado en ~15 req/s, suba o no la concurrencia** (15.0 con 60,
+  14.3 con 90). Añadir usuarios no sirve más peticiones por segundo; solo alarga la cola.
+- **La latencia crece de forma casi lineal con la concurrencia:** p50 de 3.9 s con 60 a
+  6.1 s con 90; p99 de 7.6 s a 12 s. Es la firma de un servidor **serializado**: procesa
+  a una tasa fija y la concurrencia extra se acumula como espera.
+
+### Causa (verificada en el código)
+
+`server.py` importa `eventlet` pero **nunca llama a `eventlet.monkey_patch()`** (se
+verificó por `grep`: la única aparición es `import eventlet`). Flask-SocketIO elige
+`eventlet` como modo asíncrono, pero sin el parcheo las llamadas del driver **síncrono**
+de Neo4j bloquean el hub de eventlet en cada viaje a la base. Y cada canje hace varios
+viajes a Neo4j: `verificar_token_sesion` lee el alumno, `verificar_canje` vuelve a
+leerlo y lee el dispositivo activo, y luego `get_token_status` + `update_token_used`.
+Mientras una petición espera a Neo4j, ninguna otra avanza. Eso explica a la vez el techo
+de throughput y la latencia que escala con la cola.
+
+### Matiz importante: la carga simultánea es el peor caso, no el flujo normal
+
+En el aula los canjes están serializados **por diseño**: `visor.py` proyecta un solo QR
+a la vez y lo rota solo tras cada registro exitoso (señal `new_token_signal`,
+2026-09-24). El flujo real es un alumno tras otro, no 60 a la vez. Un techo de ~15
+registros/s significa que un grupo de 60 encauzado por el QR rotativo se despacha en
+unos 4 s de tiempo de servidor; los 3.9–6.1 s de p50 son el caso de ráfaga en que todos
+pegan al mismo tiempo, y aun así con 100 % de éxito. La medición es, entonces, una cota
+superior de estrés, no la experiencia esperada por alumno (esa es la métrica 3 de la
+sección 9, el tiempo de registro por alumno, todavía pendiente).
+
+### Trabajo futuro (no se toca antes del congelamiento)
+
+- **No se modifica `server.py`.** Añadir `eventlet.monkey_patch()` al inicio, o migrar
+  al driver asíncrono de Neo4j, con toda probabilidad subiría el throughput y bajaría la
+  latencia bajo concurrencia, pero toca el arranque del servidor y su modelo de
+  concurrencia: fuera del alcance de consolidación y arriesgado cerca del congelamiento
+  del 12 de octubre de 2026. Se documenta como la optimización de mayor impacto medida,
+  no se implementa aquí. La forma de confirmarlo sería volver a correr esta misma prueba
+  tras el parcheo y comparar.
+- **El `p99` y la cola crecen sin cota con la concurrencia** porque no hay límite de
+  peticiones en vuelo ni tiempo de espera del lado del cliente real (la app). Un tiempo
+  de espera razonable en la app es trabajo futuro.
+
+### Limitaciones de la medición
+
+- **Generador y servidor en la misma máquina:** la latencia incluye la pila de red local
+  (loopback), no una red de aula real; el sesgo es hacia latencias más bajas que en
+  producción, así que las cifras son un piso, no un techo.
+- **Carga closed-loop, no un ritmo de llegada fijo:** se mide la capacidad con N
+  peticiones siempre en vuelo, que es la lectura de "N simultáneas" del protocolo, no un
+  proceso de llegadas de Poisson. El throughput saturado es el mismo resultado en ambos
+  modelos; la distribución exacta de latencias podría variar con un modelo de llegadas.
+- **`ruff` sigue sin estar instalado**; el formato del código nuevo no se verificó con
+  esa herramienta.
