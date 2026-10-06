@@ -1,0 +1,388 @@
+{
+  "generado_en": "2026-10-05T16:16:26",
+  "fuente": "manifiesto manifiesto_evaluacion_2026-10-05_161522.jsonl (360 peticiones)",
+  "global": {
+    "deteccion": {
+      "exitos": 210,
+      "n": 240,
+      "tasa": 0.875,
+      "ic95": [
+        0.8271629475389599,
+        0.9110211851110883
+      ]
+    },
+    "falsos_positivos": {
+      "exitos": 0,
+      "n": 90,
+      "tasa": 0.0,
+      "ic95": [
+        0.0,
+        0.04093706842168078
+      ]
+    }
+  },
+  "por_escenario": {
+    "canje_normal": {
+      "clase": "legitimo",
+      "rechazo": {
+        "exitos": 0,
+        "n": 30,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.113517091390478
+        ]
+      },
+      "motivos": {},
+      "motivo_esperado_coincide": {
+        "exitos": 0,
+        "n": 0,
+        "tasa": null,
+        "ic95": null
+      }
+    },
+    "error_captura": {
+      "clase": "legitimo",
+      "rechazo": {
+        "exitos": 0,
+        "n": 30,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.113517091390478
+        ]
+      },
+      "motivos": {},
+      "motivo_esperado_coincide": {
+        "exitos": 0,
+        "n": 0,
+        "tasa": null,
+        "ic95": null
+      }
+    },
+    "error_captura_fallido": {
+      "clase": "informativo",
+      "rechazo": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      },
+      "motivos": {
+        "credenciales_invalidas": 30
+      },
+      "motivo_esperado_coincide": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      }
+    },
+    "fuerza_bruta_login": {
+      "clase": "ataque",
+      "rechazo": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      },
+      "motivos": {
+        "credenciales_invalidas": 5,
+        "login_bloqueado_matricula": 25
+      },
+      "motivo_esperado_coincide": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      }
+    },
+    "llave_no_enrolada": {
+      "clase": "ataque",
+      "rechazo": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      },
+      "motivos": {
+        "firma_invalida": 30
+      },
+      "motivo_esperado_coincide": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      }
+    },
+    "login_correcto": {
+      "clase": "legitimo",
+      "rechazo": {
+        "exitos": 0,
+        "n": 30,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.113517091390478
+        ]
+      },
+      "motivos": {},
+      "motivo_esperado_coincide": {
+        "exitos": 0,
+        "n": 0,
+        "tasa": null,
+        "ic95": null
+      }
+    },
+    "proxy_otro_dispositivo": {
+      "clase": "ataque",
+      "rechazo": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      },
+      "motivos": {
+        "firma_invalida": 30
+      },
+      "motivo_esperado_coincide": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      }
+    },
+    "proxy_reenrolado": {
+      "clase": "ataque",
+      "rechazo": {
+        "exitos": 0,
+        "n": 30,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.113517091390478
+        ]
+      },
+      "motivos": {},
+      "motivo_esperado_coincide": {
+        "exitos": 0,
+        "n": 0,
+        "tasa": null,
+        "ic95": null
+      }
+    },
+    "replay_token": {
+      "clase": "ataque",
+      "rechazo": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      },
+      "motivos": {
+        "token_reutilizado": 30
+      },
+      "motivo_esperado_coincide": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      }
+    },
+    "script_sin_app": {
+      "clase": "ataque",
+      "rechazo": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      },
+      "motivos": {
+        "no_autenticado": 30
+      },
+      "motivo_esperado_coincide": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      }
+    },
+    "suplantacion_matricula": {
+      "clase": "ataque",
+      "rechazo": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      },
+      "motivos": {
+        "token_invalido": 30
+      },
+      "motivo_esperado_coincide": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      }
+    },
+    "timestamp_fuera_ventana": {
+      "clase": "ataque",
+      "rechazo": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      },
+      "motivos": {
+        "timestamp_fuera_ventana": 30
+      },
+      "motivo_esperado_coincide": {
+        "exitos": 30,
+        "n": 30,
+        "tasa": 1.0,
+        "ic95": [
+          0.8864829086095221,
+          1.0
+        ]
+      }
+    }
+  },
+  "por_motivo": {
+    "credenciales_invalidas": {
+      "ataques_detenidos": 5,
+      "legitimas_rechazadas": 0,
+      "tasa_falsos_positivos": {
+        "exitos": 0,
+        "n": 90,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.04093706842168078
+        ]
+      }
+    },
+    "firma_invalida": {
+      "ataques_detenidos": 60,
+      "legitimas_rechazadas": 0,
+      "tasa_falsos_positivos": {
+        "exitos": 0,
+        "n": 90,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.04093706842168078
+        ]
+      }
+    },
+    "login_bloqueado_matricula": {
+      "ataques_detenidos": 25,
+      "legitimas_rechazadas": 0,
+      "tasa_falsos_positivos": {
+        "exitos": 0,
+        "n": 90,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.04093706842168078
+        ]
+      }
+    },
+    "no_autenticado": {
+      "ataques_detenidos": 30,
+      "legitimas_rechazadas": 0,
+      "tasa_falsos_positivos": {
+        "exitos": 0,
+        "n": 90,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.04093706842168078
+        ]
+      }
+    },
+    "timestamp_fuera_ventana": {
+      "ataques_detenidos": 30,
+      "legitimas_rechazadas": 0,
+      "tasa_falsos_positivos": {
+        "exitos": 0,
+        "n": 90,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.04093706842168078
+        ]
+      }
+    },
+    "token_invalido": {
+      "ataques_detenidos": 30,
+      "legitimas_rechazadas": 0,
+      "tasa_falsos_positivos": {
+        "exitos": 0,
+        "n": 90,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.04093706842168078
+        ]
+      }
+    },
+    "token_reutilizado": {
+      "ataques_detenidos": 30,
+      "legitimas_rechazadas": 0,
+      "tasa_falsos_positivos": {
+        "exitos": 0,
+        "n": 90,
+        "tasa": 0.0,
+        "ic95": [
+          0.0,
+          0.04093706842168078
+        ]
+      }
+    }
+  }
+}

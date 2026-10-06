@@ -41,7 +41,10 @@ import rechazos
 load_dotenv(BACKEND_DIR / ".env")
 
 EVIDENCIAS = BACKEND_DIR.parent / "docs" / "evidencias"
-CLASES     = ("ataque", "legitimo")
+# "informativo": peticiones que se cuentan aparte y nunca entran en la tasa de
+# deteccion ni en la de falsos positivos (p. ej. el intento mal tecleado que
+# precede a un login correcto; ver docs/decisiones.md, decision 3 del banco).
+CLASES     = ("ataque", "legitimo", "informativo")
 
 
 def wilson(exitos: int, n: int, z: float = 1.96) -> tuple[float, float] | None:
@@ -108,18 +111,25 @@ def calcular(entradas: list[dict], encontrados: dict[str, dict]) -> dict:
             sys.exit(f"Escenario {e['escenario']!r} mezcla clases ataque y legitimo")
         esc["clase"] = e["clase"]
         esc["n"] += 1
-        totales[e["clase"]] += 1
+        # "informativo" se cuenta por escenario (descriptivo) pero no alimenta
+        # los totales globales de deteccion/falsos positivos.
+        if e["clase"] != "informativo":
+            totales[e["clase"]] += 1
         if e["motivo_esperado"] is not None:
             esc["n_con_esperado"] += 1
         if r is None:
             continue
         esc["rechazadas"] += 1
         esc["motivos"][r["motivo"]] += 1
-        totales[f"{e['clase']}_rechazadas"] += 1
         if e["motivo_esperado"] == r["motivo"]:
             esc["con_motivo_esperado"] += 1
-        clave = "ataques_detenidos" if e["clase"] == "ataque" else "legitimas_rechazadas"
-        por_motivo[r["motivo"]][clave] += 1
+        if e["clase"] == "ataque":
+            totales["ataque_rechazadas"] += 1
+            por_motivo[r["motivo"]]["ataques_detenidos"] += 1
+        elif e["clase"] == "legitimo":
+            totales["legitimo_rechazadas"] += 1
+            por_motivo[r["motivo"]]["legitimas_rechazadas"] += 1
+        # "informativo" rechazado: ya quedo en esc["motivos"], fuera de por_motivo
 
     n_legitimas = totales["legitimo"]
     return {
@@ -176,7 +186,8 @@ def a_texto(resultado: dict) -> str:
     g = resultado["global"]
     lineas += [f"Deteccion global:         {fmt(g['deteccion'])}",
                f"Falsos positivos global:  {fmt(g['falsos_positivos'])}", "",
-               "Por escenario (ataque: tasa de deteccion; legitimo: tasa de falsos positivos)"]
+               "Por escenario (ataque: tasa de deteccion; legitimo: tasa de falsos",
+               "positivos; informativo: descriptivo, no entra en ninguna tasa global)"]
     for nombre, d in resultado["por_escenario"].items():
         lineas.append(f"  [{d['clase']}] {nombre}: {fmt(d['rechazo'])}")
         if d["motivos"]:

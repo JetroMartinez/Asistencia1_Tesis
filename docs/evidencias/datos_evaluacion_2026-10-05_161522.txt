@@ -1,0 +1,27 @@
+# Conjunto de datos de evaluacion — 2026-10-05T16:16:25
+# Corrida: 074b84d25e9545dc
+
+Peticiones en el manifiesto: 360
+  ataque: 240
+  informativo: 30
+  legitimo: 90
+Manifiesto (no versionado, .jsonl): manifiesto_evaluacion_2026-10-05_161522.jsonl
+
+## Verificaciones fuera del manifiesto (resultados positivos, no ataques)
+
+### Suplantacion por formulario
+Canje valido cuyo formulario trae nombre y matricula de otra persona. El
+servidor ignora el formulario y registra la identidad de la sesion.
+  status HTTP:            200
+  matricula en formulario: SIM9999
+  matricula registrada:    BANCO0001
+  nombre registrado:       Banco Alumno
+  RESULTADO: OK — se registro la matricula de la sesion
+
+### Disuasion con rastro del proxy_reenrolado
+Enrolar otro telefono bajo la victima desactiva el dispositivo del dueno; el
+evento queda registrado como un nodo Dispositivo nuevo con su marca de tiempo.
+  dispositivos activos:      1
+  dispositivos desactivados: 30
+  RESULTADO: OK — un solo activo, el del dueno quedo desactivado y registrado
+

@@ -1019,3 +1019,130 @@ borrarlos al final. Siguen en 9/9 y 17/17, y tras las tres pruebas el grafo qued
   el mismo `rechazar` que el caso de contraseña corta, que sí se prueba.
 - **`ruff` sigue sin estar instalado**; el formato del código nuevo no se verificó
   con esa herramienta.
+
+---
+
+## 2026-10-05 — Banco de ataques y conjunto de datos de evaluación (sección 9, métrica 2)
+
+### Decisión
+
+`backend/scripts/generar_datos_evaluacion.py` genera el conjunto de datos de
+evaluación de la métrica 2 de la sección 9 de `CLAUDE.md` (tasa de detección y de
+falsos positivos). Reutiliza la mecánica de `tests/probar_registro_rechazos.py`
+—emitir tokens de sesión con el mismo formato que `/login`, firmar canjes ECDSA,
+enrolar dispositivos por `/dispositivos/registrar`, provocar el bloqueo de login—
+pero en vez de verificar cada caso una vez, repite cada escenario `--n` veces (30 por
+omisión) y escribe el manifiesto JSONL que `scripts/metricas_deteccion.py` cruza con
+los nodos `(:IntentoRechazado)`.
+
+**Datos sintéticos y sin red.** Usa el `test_client` de Flask de `server.py` contra
+el Neo4j local; no sale ninguna petición a `prueba.almxlvx.com` ni a la red. Crea sus
+propios alumnos `BANCO0001`–`BANCO0005`, no `SIM0001`–`SIM0003`, para no invalidar la
+sesión del teléfono de pruebas ni mezclarse con las otras pruebas del backend. Las IP
+simuladas son del rango de documentación RFC 5737 (`198.51.100.7`).
+
+**Instrumentación.** Cada petición lleva su `X-Id-Prueba` y una línea en el
+manifiesto: `{id_prueba, escenario, clase, motivo_esperado}`. El servidor guarda el
+`X-Id-Prueba` como etiqueta y nunca lo usa para decidir (2026-10-04), así que la
+etiqueta no altera lo que se mide.
+
+### Escenarios
+
+| Escenario | Clase | Motivo esperado | Qué prueba |
+|---|---|---|---|
+| `proxy_otro_dispositivo` | ataque | `firma_invalida` | Sesión válida de A, firma con la llave del dispositivo de B |
+| `llave_no_enrolada` | ataque | `firma_invalida` | Firma de una llave P-256 nunca enrolada |
+| `timestamp_fuera_ventana` | ataque | `timestamp_fuera_ventana` | Firma válida con `X-TIMESTAMP` fuera de ±60 s |
+| `replay_token` | ataque | `token_reutilizado` | Repite un canje ya aceptado |
+| `script_sin_app` | ataque | `no_autenticado` | POST del formulario sin `Bearer` ni firma (navegador o `curl`) |
+| `suplantacion_matricula` | ataque | `token_invalido` | Token de sesión con la matrícula de A y HMAC falso |
+| `fuerza_bruta_login` | ataque | `credenciales_invalidas` / `login_bloqueado_matricula` | Contraseñas incorrectas seguidas |
+| `proxy_reenrolado` | ataque | `null` (se acepta) | Se enrola otro teléfono bajo la víctima y se canjea |
+| `canje_normal` | legítimo | `null` | Token QR, sesión y firma correctos |
+| `login_correcto` | legítimo | `null` | Credenciales correctas |
+| `error_captura` | legítimo | `null` | Login correcto que sigue a un intento mal tecleado |
+| `error_captura_fallido` | informativo | `credenciales_invalidas` | El intento mal tecleado |
+
+**Clase `informativo` (cambio en `metricas_deteccion.py`).** El intento mal tecleado
+de un alumno real sí se rechaza (`credenciales_invalidas`); contarlo como falso
+positivo inflaría esa tasa con algo que no es un error del sistema. Solo el login
+correcto que viene después cuenta como `legitimo`; el intento fallido se marca
+`informativo` y el script de métricas lo cuenta por escenario pero lo deja **fuera de
+la detección global y de los falsos positivos**. Como el login correcto llama a
+`limpiar_intentos`, el contador de bloqueo nunca se acumula entre iteraciones, así que
+el alumno real nunca termina bloqueado por teclear mal una vez.
+
+### Resultados (`--n 30`, 360 peticiones, 2026-10-05)
+
+Fuente: `docs/evidencias/metricas_deteccion_2026-10-05_161626.txt` y `.json`;
+evidencia de las verificaciones fuera del manifiesto en
+`docs/evidencias/datos_evaluacion_2026-10-05_161522.txt`. El manifiesto es `.jsonl` y
+no se versiona (sección 6 de `CLAUDE.md`; `.gitignore` ya lo excluye).
+
+- **Detección global: 210/240 = 0.875** (IC95 de Wilson 0.827–0.911).
+- **Falsos positivos global: 0/90 = 0.000** (IC95 0.000–0.041).
+- Cada uno de los **siete controles técnicos** detuvo el 100 % de sus 30 peticiones,
+  y el motivo registrado coincidió 30/30 con el esperado. La fuerza bruta mostró el
+  umbral funcionando: 5 `credenciales_invalidas` seguidas de 25
+  `login_bloqueado_matricula`.
+- **`proxy_reenrolado`: 0/30 = 0.000.**
+
+**Cómo leer el 0.875.** No es una falla del sistema: es una propiedad conocida y ya
+documentada. Los siete controles técnicos detectan el 100 % de los escenarios que les
+corresponden. El 12.5 % restante es exactamente `proxy_reenrolado` (30 de 240), el
+préstamo consciente de credencial y dispositivo entre dos personas presentes, que
+**por diseño no se puede detener de forma preventiva** —ya quedó registrado como
+límite conocido el 2026-09-12 ("Préstamo consciente de credencial + dispositivo") y en
+el modelo de amenazas del mismo día—. La detección global es
+`1 − 30/240 = 0.875`. Presentar 0.875 sin esta aclaración se leería como un fallo,
+cuando es la manifestación medida de un límite que ya se había aceptado en prosa. Que
+la cifra lo confirme con datos vale más que afirmarlo.
+
+### Verificaciones fuera del manifiesto (resultados positivos, no "ataques no detectados")
+
+Dos casos no entran en el manifiesto porque contarlos como "ataque no detectado"
+falsearía la lectura: en los dos el sistema neutraliza el abuso, solo que no lo hace
+rechazando la petición. Se comprueban aparte y se registran en el `.txt` de evidencia:
+
+- **Suplantación por formulario, neutralizada.** Un canje válido de `BANCO0001` cuyo
+  formulario trae `nombre` y `matricula` de otra persona (`SIM9999`) responde `200`,
+  pero el nodo `Token` queda con la matrícula **de la sesión** (`BANCO0001`), no con la
+  del formulario. El servidor ignora `request.form` y toma la identidad del `Alumno`
+  autenticado (punto de cambio 4, 2026-09-24). Es un resultado positivo: la petición se
+  acepta, pero no suplanta a nadie.
+- **Disuasión con rastro del re-enrolamiento.** Tras los 30 re-enrolamientos de la
+  víctima en `proxy_reenrolado`, el grafo queda con **1 dispositivo activo y 30
+  desactivados**. Cada vez que el "atacante" enrola su teléfono bajo la cuenta ajena,
+  el dispositivo del dueño pasa a `activo: false` y el evento queda como un nodo
+  `Dispositivo` nuevo con su marca de tiempo. Es la prueba empírica de la "disuasión con
+  rastro" del 2026-09-12: el proxy no se bloquea, pero deja huella y le cuesta al
+  atacante el enrolamiento propio.
+
+### Limpieza (decisión 4)
+
+El script **conserva** los nodos `(:IntentoRechazado)` —son el conjunto de datos de la
+tesis, y llevan `id_prueba` para cruzarse con el manifiesto— y borra al terminar los
+`Token`, los `BloqueoLogin` y los alumnos `BANCO*` con sus `Dispositivo`. Verificado
+tras la corrida: 0 alumnos `BANCO*`, 0 `BloqueoLogin` residuales, 240 nodos
+`IntentoRechazado` en el dataset (210 ataques detenidos + 30 intentos informativos; los
+90 legítimos y los 30 de `proxy_reenrolado` se aceptan y no dejan nodo).
+
+### Límites conocidos
+
+- **El escenario del emulador (sección 9) no se mide aquí.** Desde el backend no se
+  puede distinguir una llave enrolada desde un emulador de una enrolada desde hardware:
+  haría falta Key Attestation, ya fuera de alcance por el congelamiento del 12 de
+  octubre de 2026 (2026-09-29, "Key Attestation"). Se documenta como escenario no
+  medible en lugar de simularlo con un resultado que no significaría nada.
+- **`proxy_otro_dispositivo` y `llave_no_enrolada` son indistinguibles para el
+  servidor:** los dos producen `firma_invalida`, porque en ambos la firma no verifica
+  contra el dispositivo activo del alumno. La distinción es semántica (la llave del
+  primero sí está enrolada, bajo otra matrícula). Se dejan como escenarios separados en
+  el manifiesto para nombrar el ataque que se pretendía, no porque el control los
+  trate distinto.
+- **El bloqueo de login por IP no se evalúa.** Ya documentado el 2026-10-04: todas las
+  peticiones salen de la misma máquina. Los alumnos del banco se enrolan con un
+  dispositivo activo justamente para que la fuerza bruta cuente solo por matrícula y no
+  dispare el contador por IP, que no es evaluable de forma realista.
+- **`ruff` sigue sin estar instalado**; el formato del código nuevo no se verificó con
+  esa herramienta.

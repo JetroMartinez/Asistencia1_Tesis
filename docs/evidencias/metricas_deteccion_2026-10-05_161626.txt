@@ -1,0 +1,46 @@
+# Metricas de deteccion — 2026-10-05T16:16:26
+# Fuente: manifiesto manifiesto_evaluacion_2026-10-05_161522.jsonl (360 peticiones)
+
+Deteccion global:         210/240 = 0.875 (IC95 0.827-0.911)
+Falsos positivos global:  0/90 = 0.000 (IC95 0.000-0.041)
+
+Por escenario (ataque: tasa de deteccion; legitimo: tasa de falsos
+positivos; informativo: descriptivo, no entra en ninguna tasa global)
+  [legitimo] canje_normal: 0/30 = 0.000 (IC95 0.000-0.114)
+  [legitimo] error_captura: 0/30 = 0.000 (IC95 0.000-0.114)
+  [informativo] error_captura_fallido: 30/30 = 1.000 (IC95 0.886-1.000)
+      motivos: {'credenciales_invalidas': 30}
+      motivo esperado: 30/30 = 1.000 (IC95 0.886-1.000)
+  [ataque] fuerza_bruta_login: 30/30 = 1.000 (IC95 0.886-1.000)
+      motivos: {'credenciales_invalidas': 5, 'login_bloqueado_matricula': 25}
+      motivo esperado: 30/30 = 1.000 (IC95 0.886-1.000)
+  [ataque] llave_no_enrolada: 30/30 = 1.000 (IC95 0.886-1.000)
+      motivos: {'firma_invalida': 30}
+      motivo esperado: 30/30 = 1.000 (IC95 0.886-1.000)
+  [legitimo] login_correcto: 0/30 = 0.000 (IC95 0.000-0.114)
+  [ataque] proxy_otro_dispositivo: 30/30 = 1.000 (IC95 0.886-1.000)
+      motivos: {'firma_invalida': 30}
+      motivo esperado: 30/30 = 1.000 (IC95 0.886-1.000)
+  [ataque] proxy_reenrolado: 0/30 = 0.000 (IC95 0.000-0.114)
+  [ataque] replay_token: 30/30 = 1.000 (IC95 0.886-1.000)
+      motivos: {'token_reutilizado': 30}
+      motivo esperado: 30/30 = 1.000 (IC95 0.886-1.000)
+  [ataque] script_sin_app: 30/30 = 1.000 (IC95 0.886-1.000)
+      motivos: {'no_autenticado': 30}
+      motivo esperado: 30/30 = 1.000 (IC95 0.886-1.000)
+  [ataque] suplantacion_matricula: 30/30 = 1.000 (IC95 0.886-1.000)
+      motivos: {'token_invalido': 30}
+      motivo esperado: 30/30 = 1.000 (IC95 0.886-1.000)
+  [ataque] timestamp_fuera_ventana: 30/30 = 1.000 (IC95 0.886-1.000)
+      motivos: {'timestamp_fuera_ventana': 30}
+      motivo esperado: 30/30 = 1.000 (IC95 0.886-1.000)
+
+Por motivo
+  motivo                        ataques  legitimas  tasa FP
+  credenciales_invalidas              5          0  0/90 = 0.000 (IC95 0.000-0.041)
+  firma_invalida                     60          0  0/90 = 0.000 (IC95 0.000-0.041)
+  login_bloqueado_matricula          25          0  0/90 = 0.000 (IC95 0.000-0.041)
+  no_autenticado                     30          0  0/90 = 0.000 (IC95 0.000-0.041)
+  timestamp_fuera_ventana            30          0  0/90 = 0.000 (IC95 0.000-0.041)
+  token_invalido                     30          0  0/90 = 0.000 (IC95 0.000-0.041)
+  token_reutilizado                  30          0  0/90 = 0.000 (IC95 0.000-0.041)
