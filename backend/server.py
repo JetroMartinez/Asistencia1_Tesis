@@ -37,7 +37,16 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 S_IP           = "0.0.0.0"
 S_PORT         = 26998
 app            = Flask(__name__)
-socketio       = SocketIO(app, cors_allowed_origins="*")
+# Origenes de navegador que pueden abrir Socket.IO: la pagina del QR que sirve visor.py
+# en la PC del aula. Lista separada por comas; el valor por defecto es el de desarrollo.
+# Los clientes que no mandan Origin (el socketio.Client de visor.py) no se filtran.
+SOCKETIO_CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv("SOCKETIO_CORS_ORIGINS",
+                       "http://localhost:5555,http://127.0.0.1:5555").split(",")
+    if o.strip()
+]
+socketio       = SocketIO(app, cors_allowed_origins=SOCKETIO_CORS_ORIGINS)
 driver         = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 # /login: limite de intentos y sesion (valores de punto de partida, ver docs/decisiones.md)
