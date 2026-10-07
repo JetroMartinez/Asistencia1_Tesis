@@ -59,6 +59,12 @@ VIGENCIA_SESION_SEGUNDOS  = 8 * 60 * 60
 # usuario (no aplica el mismo criterio que el codigo inicial aleatorio de
 # sembrar_identidad.py, que usa alfabeto amplio) [PENDIENTE: citas]
 LONGITUD_MINIMA_PASSWORD  = 12
+
+# Cookie de rastreo del flujo web (user_tracker). Secure por defecto; COOKIE_SECURE=0
+# solo para probar el formulario por http fuera de localhost (Chrome y Firefox aceptan
+# cookies Secure en http://localhost aun sin TLS).
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "1") != "0"
+
 # /dispositivos/registrar: tope para no guardar cadenas arbitrarias en el grafo
 LONGITUD_MAXIMA_HUELLA    = 256
 # Canje: 60 s (no 30 como /get_token) porque X-TIMESTAMP lo genera el telefono
@@ -118,6 +124,12 @@ def increment_token_warnings(tx, token):
     result = tx.run(query, token=token)
     record = result.single()
     return record['warnings'] if record else 0
+
+
+def emitir_cookie_rastreo(response, valor):
+    """Fija user_tracker con Secure, HttpOnly (ningun script la lee) y SameSite=Lax."""
+    response.set_cookie('user_tracker', valor, secure=COOKIE_SECURE, httponly=True,
+                        samesite='Lax')
 
 
 def rechazar(motivo, status, respuesta):
@@ -505,13 +517,13 @@ def process_checkin():
                 return rechazar("token_reutilizado", 409, jsonify(
                     {"error": "token_reutilizado", "warnings": new_warnings}))
             response     = make_response(render_template('warning.html', warnings=new_warnings))
-            response.set_cookie('user_tracker', user_cookie)
+            emitir_cookie_rastreo(response, user_cookie)
             # El GET de navegador tambien es un reuso, aunque responda 200
             return rechazar("token_reutilizado", 200, response)
         # send the forms
         if request.method == 'GET':
             response = make_response(render_template('checkin_form.html', token=token))
-            response.set_cookie('user_tracker', user_cookie) 
+            emitir_cookie_rastreo(response, user_cookie)
             return response
 
         # Process the forms with POST
