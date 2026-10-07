@@ -1,0 +1,24 @@
+# Pruebas de carga del canje — 2026-10-07T14:49:00
+# Endpoint: POST /?token=... (canje autenticado)
+# Modelo: closed-loop, N usuarios FastHttpUser sin pausa (N canjes en vuelo)
+# Latencia: ms de ida y vuelta medidos por Locust (servidor + pila local); no incluye la firma ECDSA del cliente
+# server.py gestionado por el script: True
+
+ conc.  peticiones    exito    p50    p95    p99    max      rps
+----------------------------------------------------------------
+    60        3000   100.0%    190    250    370    406    289.7
+    90        3000   100.0%    270    400    600   1388    302.2
+
+Detalle por nivel:
+  Concurrencia 60:
+    peticiones=3000  exitos=3000  fallos=0  tasa_exito=100.00%
+    latencia ms: min=52 p50=190 p95=250 p99=370 max=406 media=194.1
+    duracion=10.36s  throughput=289.7 req/s
+    codigos HTTP: {200: 3000}
+  Concurrencia 90:
+    peticiones=3000  exitos=3000  fallos=0  tasa_exito=100.00%
+    latencia ms: min=89 p50=270 p95=400 p99=600 max=1388 media=286.0
+    duracion=9.93s  throughput=302.2 req/s
+    codigos HTTP: {200: 3000}
+
+Nodos IntentoRechazado del banco borrados en la limpieza: 0 (0 = ningun canje fue rechazado)

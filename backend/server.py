@@ -1,3 +1,10 @@
+# eventlet.monkey_patch() debe ejecutarse antes de cualquier import que use sockets o
+# hilos (neo4j, flask_socketio), para que las llamadas del driver sincrono de Neo4j no
+# bloqueen el hub de eventlet en cada viaje a la base (ver docs/decisiones.md, pruebas
+# de carga del 2026-10-05).
+import eventlet
+eventlet.monkey_patch()
+
 import os
 import sys
 import uuid
@@ -8,7 +15,6 @@ from   flask          import Flask, jsonify, request, render_template, make_resp
 from   flask_socketio import SocketIO
 from   neo4j          import GraphDatabase
 from   werkzeug.security import check_password_hash, generate_password_hash
-import eventlet
 import hmac
 import hashlib
 import time

@@ -1234,7 +1234,8 @@ sección 9, el tiempo de registro por alumno, todavía pendiente).
   concurrencia: fuera del alcance de consolidación y arriesgado cerca del congelamiento
   del 12 de octubre de 2026. Se documenta como la optimización de mayor impacto medida,
   no se implementa aquí. La forma de confirmarlo sería volver a correr esta misma prueba
-  tras el parcheo y comparar.
+  tras el parcheo y comparar. **Actualización:** el autor decidió probarlo en rama aparte
+  con criterio de fusión explícito; ver la entrada del 2026-10-07.
 - **El `p99` y la cola crecen sin cota con la concurrencia** porque no hay límite de
   peticiones en vuelo ni tiempo de espera del lado del cliente real (la app). Un tiempo
   de espera razonable en la app es trabajo futuro.
@@ -1250,3 +1251,86 @@ sección 9, el tiempo de registro por alumno, todavía pendiente).
   modelos; la distribución exacta de latencias podría variar con un modelo de llegadas.
 - **`ruff` sigue sin estar instalado**; el formato del código nuevo no se verificó con
   esa herramienta.
+
+---
+
+## 2026-10-07 — `eventlet.monkey_patch()` en `server.py`: optimización medida antes y después
+
+### Decisión
+
+Se añade `eventlet.monkey_patch()` como primera instrucción de `server.py`, antes de
+cualquier otro import, en la rama `optimizacion-eventlet-monkeypatch`. Es exactamente la
+causa diagnosticada en la entrada del 2026-10-05 (el driver síncrono de Neo4j bloqueaba
+el hub de eventlet). El autor fijó el criterio **antes** de medir:
+
+- **Se fusiona** si el throughput sube **y** las tres suites siguen pasando
+  (`probar_canje_firmado` 9/9, `probar_registro_dispositivo` 17/17,
+  `probar_registro_rechazos` 39/39).
+- **Se descarta la rama** si algo se rompe, y queda documentada como optimización
+  intentada y medida.
+
+En cualquiera de los dos casos el antes y el después es resultado de la tesis. El cambio
+es una línea más el traslado de `import eventlet` al inicio; no se toca la lógica del
+canje, el esquema de Neo4j ni el flujo de autenticación.
+
+### Verificación funcional
+
+Las tres suites, corridas contra el `server.py` parcheado (2026-10-07): **17/17, 9/9 y
+39/39**. Sin cambios en el comportamiento observable.
+
+### Resultados: antes (2026-10-05, commit `3eb962e`) contra después (2026-10-07)
+
+Mismos parámetros que la línea base: `python scripts/correr_carga.py` sin argumentos
+(niveles 60 y 90, lote de 3000 canjes, tope de 180 s), misma máquina, mismo Neo4j local.
+Fuentes: `carga_canje_2026-10-05_181850`, `carga_canje_2026-10-07_144900` (corrida 1) y
+`carga_canje_2026-10-07_144953` (corrida 2), `.txt` y `.json` en `docs/evidencias/`.
+
+| Conc. | Corrida | Peticiones | Éxito | p50 | p95 | p99 | máx | throughput |
+|---|---|---|---|---|---|---|---|---|
+| 60 | antes | 2714 | 100 % | 3900 ms | 6800 ms | 7600 ms | 8377 ms | 15.0 req/s |
+| 60 | después 1 | 3000 | 100 % | 190 ms | 250 ms | 370 ms | 406 ms | 289.7 req/s |
+| 60 | después 2 | 3000 | 100 % | 200 ms | 240 ms | 250 ms | 251 ms | 284.1 req/s |
+| 90 | antes | 2576 | 100 % | 6100 ms | 11000 ms | 12000 ms | 13768 ms | 14.3 req/s |
+| 90 | después 1 | 3000 | 100 % | 270 ms | 400 ms | 600 ms | 1388 ms | 302.2 req/s |
+| 90 | después 2 | 3000 | 100 % | 260 ms | 310 ms | 330 ms | 1315 ms | 321.5 req/s |
+
+### Lectura de los datos
+
+- **Throughput ~19–22 veces mayor** (15.0 → 284–290 req/s con 60; 14.3 → 302–322 req/s
+  con 90). Y ahora **sí sube con la concurrencia**, que es lo que la serialización
+  impedía: el servidor deja de procesar una petición a la vez.
+- **p50 ~20 veces menor** (3.9 s → 0.19–0.20 s con 60; 6.1 s → 0.26–0.27 s con 90). El
+  p99 baja de 7.6 s y 12 s a 0.25–0.6 s.
+- **Tasa de éxito: 100 % en todo**, 0 nodos `IntentoRechazado` en las tres limpiezas.
+  La concurrencia real no introdujo carreras visibles en el canje de un solo uso.
+- **Las dos corridas posteriores coinciden** dentro de ~10 % en throughput y p50; la
+  mejora no es ruido de una corrida.
+- **Máximo de ~1.3–1.4 s con 90 en ambas corridas:** cola aislada (p99 ≤ 0.6 s), muy
+  probablemente el arranque del nivel (apertura de conexiones del pool del driver). No
+  se investigó más; se reporta tal cual.
+- **Criterio de fusión cumplido:** el throughput sube y las tres suites pasan.
+
+### Matiz de comparabilidad
+
+Antes, ambos niveles agotaron el **tope de 180 s** (2714 y 2576 canjes); después,
+ambos agotaron el **lote de 3000** en ~10 s. Los parámetros de la corrida son
+idénticos, pero la condición que termina la medición cambió: las corridas posteriores
+son más cortas y no incluyen comportamiento sostenido de minutos. Para la métrica de
+la sección 9 (60 y 90 simultáneas) la muestra de 3000 sobra para los percentiles; una
+corrida de varios minutos (`--canjes` mayor) es trabajo futuro si el jurado pregunta
+por estabilidad sostenida.
+
+### Consecuencia para la entrada del 2026-10-05
+
+El "techo de ~15 req/s" y el párrafo sobre el despacho de un grupo de 60 en ~4 s
+describen el servidor **sin** parcheo; quedan como la línea base del antes. Con el
+parcheo, el canje deja de ser el cuello de botella del aula: el ritmo lo marca la
+rotación del QR y el alumno, no el servidor.
+
+### Riesgo conocido
+
+`eventlet` emite al importarse un `EventletDeprecationWarning`: el proyecto está en
+modo de mantenimiento y sus autores recomiendan migrar a `asyncio`. No afecta al
+funcionamiento medido, pero es una deuda técnica real. Migrar a otro modo asíncrono de
+Flask-SocketIO, o al driver asíncrono de Neo4j, es trabajo futuro fuera del alcance de
+la tesis.
