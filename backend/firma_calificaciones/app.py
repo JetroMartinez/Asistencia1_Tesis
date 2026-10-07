@@ -1211,4 +1211,4 @@ if __name__ == "__main__":
     if not SERVER_SIGNING_SECRET or not USER_SIGNING_SECRET:
         raise RuntimeError("Faltan SERVER_SIGNING_SECRET o USER_SIGNING_SECRET en .env")
 
-    app.run(host=S_IP, port=S_PORT, debug=True)
+    app.run(host=S_IP, port=S_PORT, debug=False)

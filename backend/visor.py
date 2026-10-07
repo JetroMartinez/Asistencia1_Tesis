@@ -96,4 +96,4 @@ if __name__ == '__main__':
     sio_thread = threading.Thread(target=start_socketio_client, daemon=True)
     sio_thread.start()
     print(f"PC1 Server (Web) corriendo en http://{PC1_IP}:{PC1_PORT}")
-    app.run(host=PC1_IP, port=PC1_PORT, debug=True, use_reloader=False)
+    app.run(host=PC1_IP, port=PC1_PORT, debug=False, use_reloader=False)

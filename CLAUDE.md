@@ -121,8 +121,8 @@ firmada desde ese dispositivo registrado. Discutir alternativas antes de impleme
 
 ### Fallos concretos que hay que corregir
 
-1. `visor.py` corre con `debug=True`: expone el depurador de Werkzeug y permite
-   ejecución remota de código. Quitarlo.
+1. `visor.py` y `firma_calificaciones/app.py` corren con `debug=True`: exponen el
+   depurador de Werkzeug y permiten ejecución remota de código. Quitarlo en ambos.
 2. `cors_allowed_origins="*"` en Socket.IO: restringir a los orígenes reales.
 3. `prueba.almxlvx.com` está incrustado en el código: moverlo a configuración.
 4. La cookie `user_tracker` se emite sin `Secure`, `HttpOnly` ni `SameSite`.
