@@ -281,10 +281,10 @@ hallazgo válido de la tesis.
 - [ ] Android: login, Keystore, firma del canje, EncryptedSharedPreferences
 - [ ] Alta de cuentas desde Excel 
 - [ ] Cerrar o restringir el flujo web de registro
-- [ ] Quitar `debug=True` de `visor.py`
-- [ ] Restringir CORS de Socket.IO
-- [ ] Externalizar dominio y configuración
-- [ ] Endurecer la cookie `user_tracker`
+- [x] Quitar `debug=True` de `visor.py` y `firma_calificaciones/app.py`
+- [x] Restringir CORS de Socket.IO
+- [x] Externalizar dominio y configuración (servidor, visor y app; puertos y otros módulos: trabajo futuro)
+- [x] Endurecer la cookie `user_tracker`
 - [ ] Archivar `reporte.py`, `reporte2.py`, `reporte3.py` en `legacy/`
 - [ ] Accesibilidad en la app: TalkBack y háptica
 - [ ] Banco de scripts de ataque

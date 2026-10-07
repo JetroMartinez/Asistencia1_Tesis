@@ -1334,3 +1334,103 @@ modo de mantenimiento y sus autores recomiendan migrar a `asyncio`. No afecta al
 funcionamiento medido, pero es una deuda técnica real. Migrar a otro modo asíncrono de
 Flask-SocketIO, o al driver asíncrono de Neo4j, es trabajo futuro fuera del alcance de
 la tesis.
+
+---
+
+## 2026-10-07 — Corrección de los fallos de seguridad de la sección 5
+
+### Decisión
+
+Se corrigen los cuatro fallos documentados en la sección 5 de CLAUDE.md, un commit por
+fallo, en la rama `endurece-seguridad-seccion5`. Tras cada commit se corrieron las tres
+suites existentes (17/17, 9/9, 39/39, sin cambios). Esas suites prueban el canje firmado
+y **no cubren ninguno de los cuatro fallos**, así que se agregó
+`tests/probar_endurecimiento.py`, que sí los verifica: **17/21 antes** del último cambio
+(fallaban solo los atributos de la cookie) y **21/21 después**. El antes y el después
+quedan en `docs/evidencias/endurecimiento_2026-10-07.txt`.
+
+### 1. `debug=True` en `visor.py` y en `firma_calificaciones/app.py`
+
+**`debug=True` estuvo activo durante todo el desarrollo** en `visor.py` y se corrigió el
+2026-10-07, antes del congelamiento de código del 12 de octubre de 2026. Al revisar el
+código se encontró el mismo fallo en `firma_calificaciones/app.py`, que la sección 5 de
+CLAUDE.md no mencionaba; se corrigió también y se actualizó la sección 5.
+
+Medido antes de corregir: el visor, que escucha en `0.0.0.0:5555`, servía los recursos
+del depurador de Werkzeug y la consola interactiva (`GET /console` → 200). La consola
+pide un PIN, pero el PIN de Werkzeug se deriva de datos de la máquina y es la única
+barrera ante ejecución remota de código en un equipo del aula conectado a la red.
+Después: `/console` → 404 y los recursos del depurador no se sirven, en las dos apps.
+
+`debug=False` también apaga el recargador automático; en `visor.py` ya estaba apagado
+(`use_reloader=False`). Para depurar en desarrollo basta con correr Flask localmente con
+`FLASK_DEBUG=1` en una máquina que no esté expuesta; no se agregó una variable de
+entorno para encender el depurador, para que no exista la opción en producción.
+
+### 2. CORS de Socket.IO
+
+`cors_allowed_origins="*"` se sustituye por `SOCKETIO_CORS_ORIGINS` (lista separada por
+comas), con `http://localhost:5555,http://127.0.0.1:5555` por defecto.
+
+- **Por qué ese origen:** el único navegador que abre Socket.IO es el que muestra
+  `qr_display.html`, servida por `visor.py` en el puerto 5555 **de la misma PC del
+  aula**, que el proyector abre como `localhost:5555`. La app Android no usa Socket.IO.
+  El cliente Python de `visor.py` no manda cabecera `Origin`, y engineio solo filtra
+  peticiones que la traen, así que no se ve afectado.
+- **Si el proyector abriera el visor desde otra máquina** (por ejemplo,
+  `http://10.0.0.15:5555`), ese origen **debe agregarse a `SOCKETIO_CORS_ORIGINS` en el
+  `.env` de producción**; si no, el navegador del proyector no recibe
+  `new_token_signal` y el QR no rota tras cada registro. Queda anotado en
+  `backend/.env.example`.
+- Medido: handshake con `Origin: https://evil.example` → 200 antes, 400 después.
+- **Límite, dicho con honestidad:** CORS solo frena a páginas web ajenas que intenten
+  usar el navegador de un visitante; un script fuera del navegador manda el `Origin`
+  que quiera o ninguno. El canal solo difunde `new_token_signal`, que no lleva datos
+  personales ni el token, así que el riesgo residual es que un tercero sepa cuándo hubo
+  un registro. Autenticar la conexión de Socket.IO es trabajo futuro.
+
+### 3. Dominio fuera del código
+
+`prueba.almxlvx.com` estaba incrustado en tres lugares:
+
+| Lugar | Ahora | Por defecto |
+|---|---|---|
+| `visor.py` | `SERVER_URL` en el `.env` | `http://localhost:26998` |
+| `templates/qr_display.html` | variable de plantilla `socketio_url`, desde `visor.py` | la misma `SERVER_URL` |
+| `app/build.gradle.kts` | `asistencia.baseUrl.debug` / `asistencia.baseUrl.release` en `local.properties` | `http://localhost:26998` / `https://prueba.almxlvx.com` |
+
+- El valor por defecto de `visor.py` es el de desarrollo: si en la PC del aula faltara
+  `SERVER_URL`, el visor apuntaría a localhost. Para que no pase inadvertido, `visor.py`
+  imprime al arrancar la URL que usa y la conexión Socket.IO falla de inmediato.
+- En la app se conserva la regla de 2026-09-30: la app solo habla con `BASE_URL`, nunca
+  con una URL leída del QR. `local.properties` no se versiona. Se verificó en el
+  `BuildConfig` generado: con y sin override de `release`.
+- Se agregó `backend/.env.example` con los nombres de todas las variables de
+  `server.py` y `visor.py`, sin valores secretos.
+
+### 4. Cookie `user_tracker`
+
+Las dos ramas del flujo web que la emiten (formulario y `warning.html`) pasan por
+`emitir_cookie_rastreo()`:
+
+- **`Secure`:** no viaja por http en claro. Se puede apagar con `COOKIE_SECURE=0` solo
+  para probar el formulario por http fuera de localhost (Chrome y Firefox aceptan
+  cookies `Secure` en `http://localhost`).
+- **`HttpOnly`:** ninguna plantilla lee la cookie desde JavaScript, así que no se rompe
+  nada y un XSS no podría leerla.
+- **`SameSite=Lax`, no `Strict`:** la cookie se lee en el GET del formulario (al que se
+  llega desde el QR, una navegación de nivel superior) y en el POST del mismo sitio;
+  `Lax` cubre ambos. `Strict` no añade protección real aquí, porque la cookie no
+  autoriza nada: solo identifica el navegador para el conjunto de datos.
+- El valor que ya trae el cliente se conserva, así que el rastreo entre intentos no
+  cambia (verificado en la suite).
+
+### Lo que no se hizo (trabajo futuro)
+
+- `almxlvx.com` sigue incrustado en `reporte4.py` (`validar.`, con
+  `BASE_VALIDATION_URL` ya opcional), `excel_ver/app.py` y `firma_calificaciones/app.py`
+  (`calificaciones.`): son otros subdominios, en módulos que no se reescriben
+  (CLAUDE.md, sección 8).
+- Los puertos (26998, 5555, 45001, 45002) siguen fijos en el código.
+- La cookie solo existe en el flujo web, que todavía hay que cerrar o restringir
+  (sección 4 de CLAUDE.md). El endurecimiento reduce el daño mientras exista.
