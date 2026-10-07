@@ -10,15 +10,17 @@ import os
 from   dotenv         import load_dotenv
 
 
+load_dotenv()
 
-S_SERVER_URL   = "https://prueba.almxlvx.com"
-S_SOCKETIO_URL = "https://prueba.almxlvx.com"
+# URL del servidor central. En produccion el .env de la PC del aula debe fijar
+# SERVER_URL=https://prueba.almxlvx.com; el valor por defecto es el servidor local.
+S_SERVER_URL   = os.getenv("SERVER_URL", "http://localhost:26998").rstrip("/")
+S_SOCKETIO_URL = S_SERVER_URL
 PC1_IP         = "0.0.0.0"
 PC1_PORT       = 5555
 app            = Flask(__name__)
 sio            = socketio.Client()
 current_token  = None
-load_dotenv()
 API_SECRET = os.getenv("API_SECRET")
 
 
@@ -87,7 +89,8 @@ def index():
             return f"Connection error: {e}.", 500
     # generate the final ul
     qr_url = f"{S_SERVER_URL}?token={current_token}"
-    return render_template('qr_display.html', token=current_token, qr_url=qr_url)
+    return render_template('qr_display.html', token=current_token, qr_url=qr_url,
+                           socketio_url=S_SOCKETIO_URL)
 
 
 
@@ -96,4 +99,5 @@ if __name__ == '__main__':
     sio_thread = threading.Thread(target=start_socketio_client, daemon=True)
     sio_thread.start()
     print(f"PC1 Server (Web) corriendo en http://{PC1_IP}:{PC1_PORT}")
-    app.run(host=PC1_IP, port=PC1_PORT, debug=True, use_reloader=False)
+    print(f"Servidor central: {S_SERVER_URL}")
+    app.run(host=PC1_IP, port=PC1_PORT, debug=False, use_reloader=False)

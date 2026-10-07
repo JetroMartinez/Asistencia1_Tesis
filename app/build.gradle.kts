@@ -1,8 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+// URL del servidor por tipo de compilacion, desde local.properties (no versionado):
+//   asistencia.baseUrl.debug=http://localhost:26998
+//   asistencia.baseUrl.release=https://prueba.almxlvx.com
+// Si falta la propiedad se usa el valor por defecto de abajo.
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+fun baseUrl(buildType: String, porDefecto: String): String =
+    "\"" + localProps.getProperty("asistencia.baseUrl.$buildType", porDefecto) + "\""
 
 android {
     namespace = "mx.buap.fcc.asistencia"
@@ -22,10 +34,10 @@ android {
         // La app solo habla con BASE_URL; nunca con una URL leida del QR.
         debug {
             // Servidor local expuesto con: adb reverse tcp:26998 tcp:26998
-            buildConfigField("String", "BASE_URL", "\"http://localhost:26998\"")
+            buildConfigField("String", "BASE_URL", baseUrl("debug", "http://localhost:26998"))
         }
         release {
-            buildConfigField("String", "BASE_URL", "\"https://prueba.almxlvx.com\"")
+            buildConfigField("String", "BASE_URL", baseUrl("release", "https://prueba.almxlvx.com"))
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

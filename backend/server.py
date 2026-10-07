@@ -37,7 +37,16 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 S_IP           = "0.0.0.0"
 S_PORT         = 26998
 app            = Flask(__name__)
-socketio       = SocketIO(app, cors_allowed_origins="*")
+# Origenes de navegador que pueden abrir Socket.IO: la pagina del QR que sirve visor.py
+# en la PC del aula. Lista separada por comas; el valor por defecto es el de desarrollo.
+# Los clientes que no mandan Origin (el socketio.Client de visor.py) no se filtran.
+SOCKETIO_CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv("SOCKETIO_CORS_ORIGINS",
+                       "http://localhost:5555,http://127.0.0.1:5555").split(",")
+    if o.strip()
+]
+socketio       = SocketIO(app, cors_allowed_origins=SOCKETIO_CORS_ORIGINS)
 driver         = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 # /login: limite de intentos y sesion (valores de punto de partida, ver docs/decisiones.md)
@@ -50,6 +59,12 @@ VIGENCIA_SESION_SEGUNDOS  = 8 * 60 * 60
 # usuario (no aplica el mismo criterio que el codigo inicial aleatorio de
 # sembrar_identidad.py, que usa alfabeto amplio) [PENDIENTE: citas]
 LONGITUD_MINIMA_PASSWORD  = 12
+
+# Cookie de rastreo del flujo web (user_tracker). Secure por defecto; COOKIE_SECURE=0
+# solo para probar el formulario por http fuera de localhost (Chrome y Firefox aceptan
+# cookies Secure en http://localhost aun sin TLS).
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "1") != "0"
+
 # /dispositivos/registrar: tope para no guardar cadenas arbitrarias en el grafo
 LONGITUD_MAXIMA_HUELLA    = 256
 # Canje: 60 s (no 30 como /get_token) porque X-TIMESTAMP lo genera el telefono
@@ -109,6 +124,12 @@ def increment_token_warnings(tx, token):
     result = tx.run(query, token=token)
     record = result.single()
     return record['warnings'] if record else 0
+
+
+def emitir_cookie_rastreo(response, valor):
+    """Fija user_tracker con Secure, HttpOnly (ningun script la lee) y SameSite=Lax."""
+    response.set_cookie('user_tracker', valor, secure=COOKIE_SECURE, httponly=True,
+                        samesite='Lax')
 
 
 def rechazar(motivo, status, respuesta):
@@ -496,13 +517,13 @@ def process_checkin():
                 return rechazar("token_reutilizado", 409, jsonify(
                     {"error": "token_reutilizado", "warnings": new_warnings}))
             response     = make_response(render_template('warning.html', warnings=new_warnings))
-            response.set_cookie('user_tracker', user_cookie)
+            emitir_cookie_rastreo(response, user_cookie)
             # El GET de navegador tambien es un reuso, aunque responda 200
             return rechazar("token_reutilizado", 200, response)
         # send the forms
         if request.method == 'GET':
             response = make_response(render_template('checkin_form.html', token=token))
-            response.set_cookie('user_tracker', user_cookie) 
+            emitir_cookie_rastreo(response, user_cookie)
             return response
 
         # Process the forms with POST

@@ -107,7 +107,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
 <script>
-    const socket = io('https://prueba.almxlvx.com');
+    const socket = io({{ socketio_url | tojson }});
     socket.on('new_token_signal', () => window.location.reload());
 </script>
 

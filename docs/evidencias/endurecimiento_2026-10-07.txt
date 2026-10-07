@@ -1,0 +1,60 @@
+# Endurecimiento de la seccion 5 de CLAUDE.md — 2026-10-07
+# Rama endurece-seguridad-seccion5. Datos sinteticos, servidor y Neo4j locales.
+
+## ANTES (main en 61bce5f), sondeos manuales con curl
+
+1. visor.py con debug=True, puerto 5555 en 0.0.0.0:
+   GET /?__debugger__=yes&cmd=resource&f=debugger.js -> HTTP 200, 10068 bytes, text/javascript
+   GET /console                                       -> HTTP 200 (consola interactiva de Werkzeug)
+   log: " * Debug mode: on"
+   (firma_calificaciones/app.py tenia el mismo debug=True; no se sondeo por separado)
+
+2. Socket.IO con cors_allowed_origins="*", handshake GET /socket.io/?EIO=4&transport=polling:
+   Origin=http://localhost:5555   -> HTTP 200
+   Origin=http://127.0.0.1:5555   -> HTTP 200
+   Origin=https://evil.example    -> HTTP 200
+   Origin=http://localhost:26998  -> HTTP 200
+   sin Origin                     -> HTTP 200
+
+3. Dominio incrustado: visor.py (S_SERVER_URL, S_SOCKETIO_URL), templates/qr_display.html
+   (io('https://prueba.almxlvx.com')) y app/build.gradle.kts (BASE_URL de release).
+
+4. tests/probar_endurecimiento.py contra el codigo con los puntos 1-3 ya corregidos y la
+   cookie sin corregir: 17/21. Fallaron solo Secure, HttpOnly y SameSite=Lax (en las dos
+   ramas que emiten la cookie):
+   Set-Cookie: user_tracker=2370ad17e15841438e7a3f3a8056a8dc; Path=/
+
+## DESPUES: python tests/probar_endurecimiento.py
+
+== 1. depurador de Werkzeug
+OK  visor.py: /console esperado 404, obtenido 404
+OK  visor.py: recurso debugger.js no servido (Content-Type text/html; charset=utf-8)
+OK  firma_calificaciones/app.py: /console esperado 404, obtenido 404
+OK  firma_calificaciones/app.py: recurso debugger.js no servido (Content-Type text/html; charset=utf-8)
+== 2. CORS de Socket.IO
+OK  Origin permitido http://localhost:5555: esperado 200, obtenido 200
+OK  Origin permitido http://127.0.0.1:5555: esperado 200, obtenido 200
+OK  Origin ajeno https://atacante.invalid: esperado 400, obtenido 400
+OK  Origin ajeno null: esperado 400, obtenido 400
+OK  sin Origin (cliente Python de visor.py): esperado 200, obtenido 200
+== 3. URL del servidor externalizada
+OK  visor.S_SERVER_URL tomada de SERVER_URL: https://servidor-prueba.invalid
+OK  qr_display.html conecta Socket.IO a SERVER_URL
+OK  el QR apunta a SERVER_URL
+OK  la pagina del QR no contiene el dominio incrustado
+== 4. cookie user_tracker
+     Set-Cookie: user_tracker=87582b8980fb4343829f0bd3eee253cb; Secure; HttpOnly; Path=/; SameSite=Lax
+OK  GET del formulario emite user_tracker
+OK  atributo Secure
+OK  atributo HttpOnly
+OK  atributo SameSite=Lax
+OK  Path=/
+OK  valor de 32 hex (uuid4)
+OK  se conserva el valor que trae el cliente
+     Set-Cookie (warning.html): user_tracker=5df38e42038d49988005d002bbde9efd; Secure; HttpOnly; Path=/; SameSite=Lax
+OK  warning.html emite la cookie con Secure, HttpOnly y SameSite=Lax
+21/21 verificaciones correctas
+
+## Suites existentes tras cada uno de los cuatro cambios
+probar_registro_dispositivo 17/17, probar_canje_firmado 9/9, probar_registro_rechazos 39/39
+(identico tras cada commit de la rama).
