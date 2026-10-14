@@ -1,0 +1,52 @@
+{
+  "generado_en": "2026-10-13T22:16:08",
+  "endpoint": "POST /?token=... (canje autenticado)",
+  "host": "http://127.0.0.1:26998",
+  "modelo_carga": "closed-loop, N usuarios FastHttpUser sin pausa (N canjes en vuelo)",
+  "nota_latencia": "ms de ida y vuelta medidos por Locust (servidor + pila local); no incluye la firma ECDSA del cliente",
+  "server_gestionado": true,
+  "niveles": [
+    {
+      "nivel_concurrencia": 60,
+      "canjes_solicitados": 3000,
+      "peticiones_totales": 3000,
+      "exitos": 3000,
+      "fallos": 0,
+      "tasa_exito": 1.0,
+      "latencia_ms": {
+        "min": 58,
+        "p50": 180,
+        "p95": 240,
+        "p99": 400,
+        "max": 422,
+        "media": 186.4
+      },
+      "duracion_s": 9.96,
+      "throughput_rps": 301.3,
+      "codigos_http": {
+        "200": 3000
+      }
+    },
+    {
+      "nivel_concurrencia": 90,
+      "canjes_solicitados": 3000,
+      "peticiones_totales": 3000,
+      "exitos": 3000,
+      "fallos": 0,
+      "tasa_exito": 1.0,
+      "latencia_ms": {
+        "min": 157,
+        "p50": 260,
+        "p95": 320,
+        "p99": 340,
+        "max": 1376,
+        "media": 270.9
+      },
+      "duracion_s": 9.52,
+      "throughput_rps": 315.0,
+      "codigos_http": {
+        "200": 3000
+      }
+    }
+  ]
+}

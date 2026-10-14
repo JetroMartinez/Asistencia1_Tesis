@@ -1434,3 +1434,154 @@ Las dos ramas del flujo web que la emiten (formulario y `warning.html`) pasan po
 - Los puertos (26998, 5555, 45001, 45002) siguen fijos en el código.
 - La cookie solo existe en el flujo web, que todavía hay que cerrar o restringir
   (sección 4 de CLAUDE.md). El endurecimiento reduce el daño mientras exista.
+
+---
+
+## 2026-10-13 — Reemplazo del SSD y verificación de reproducibilidad
+
+### Incidente
+
+- **2026-10-12.** Un apagado forzado durante una actualización de `pacman` corrompió el
+  Btrfs del SSD SATA genérico ("SSD1TB", firmware V8301c70), con errores
+  `parent transid verify failed`. Se respaldó desde un USB live, se reinstaló CachyOS
+  con ext4 en el mismo SSD y se reconstruyó el entorno: clon desde GitHub, dependencias
+  fijadas a las versiones del `.venv` anterior (commit `e1d11f7`), Neo4j local en
+  Docker y sembrado. Las suites pasaron.
+- **2026-10-13.** Tras un reinicio normal, el sistema volvió a entrar en modo de
+  emergencia. `fsck` mostró corrupción extensa de ext4; `pacman.log` había perdido
+  todas las escrituras posteriores a las 21:48 del 12 de octubre; el contador SMART
+  `Power_Cycle_Count` seguía en 84 tras varios reinicios, y el kernel reportaba que el
+  disco no soporta FUA. **Conclusión: el SSD confirmaba escrituras que nunca
+  guardaba.** Por eso la reinstalación sobre el mismo disco no podía resolverlo: el
+  sistema de archivos no era la causa, sino la víctima.
+- **Pérdidas:** los archivos de evidencia de las métricas de detección de las 00:14 del
+  13 de octubre y el `.json` de la carga del 12 (se conserva solo
+  `carga_canje_2026-10-12_234940.txt`). `backend/.env` se recuperó de una copia
+  (`asistencias/.env`). Nada del repositorio se perdió: todo lo versionado estaba en
+  GitHub.
+- **Reemplazo:** ADATA SU630 de 480 GB, con CachyOS reinstalado sobre ext4.
+
+### Entorno reconstruido
+
+| Pieza | Estado |
+|---|---|
+| Neo4j | 2026.09.0 en Docker (contenedor `neo4j-tesis`, puerto 7687) |
+| `backend/.env` | Restaurado desde la copia. `SERVER_SIGNING_SECRET` y `USER_SIGNING_SECRET` son **nuevos y solo para desarrollo local**; los de producción siguen en el servidor |
+| `.venv` | Python 3.14.8, instalado desde `backend/requirements.txt`; `pip freeze` coincide exactamente con el archivo |
+| Datos | 12 alumnos sintéticos (`SIM0001`–`SIM0012`) con `scripts/sembrar_identidad.py` |
+
+`SERVER_SIGNING_SECRET` y `USER_SIGNING_SECRET` los lee `firma_calificaciones/app.py`,
+que no arranca sin ellos, y faltaban en `backend/.env.example`; se agregaron sin valores.
+
+### Receta de montaje desde cero
+
+1. Docker con Neo4j escuchando en `bolt://127.0.0.1:7687`.
+2. `backend/.env` a partir de `backend/.env.example`, con secretos propios.
+3. `pip install -r backend/requirements.txt` en un `.venv`.
+4. Desde `backend/`: `python scripts/sembrar_identidad.py`.
+5. Las suites de `backend/tests/`.
+
+**El sembrado no es opcional:** sin él, las suites fallan con `sesion_cerrada` porque
+`SIM0001` no existe. Es la primera falla con la que uno se encuentra al montar desde
+cero, y el mensaje no apunta a la causa.
+
+### Resultados
+
+**Suites:** `probar_registro_dispositivo` 17/17, `probar_canje_firmado` 9/9,
+`probar_registro_rechazos` 39/39 y `probar_endurecimiento` 21/21.
+
+**Prueba manual de extremo a extremo** con un Pixel 9a por USB (`adb reverse` del
+puerto 26998, build debug contra `http://localhost:26998`), alumno `SIM0005`: login
+con el código inicial, cambio obligatorio de contraseña, enrolamiento del dispositivo
+y escaneo del QR proyectado por `visor.py`. En Neo4j quedó el `Token` usado a nombre
+de `SIM0005` con `warnings = 0`, el alumno con un `Dispositivo` activo y
+`debe_cambiar_password = false`, y el QR rotó a un token nuevo. **Ningún rechazo.** El
+único `IntentoRechazado` de la sesión (`solicitud_invalida`) lo provocó un `curl` de
+verificación a `/` sin token, antes de la prueba; se borró por ser ruido de la
+verificación, no parte del conjunto de datos.
+
+**Carga del canje** (`python scripts/correr_carga.py` sin argumentos: niveles 60 y 90,
+lote de 3000 canjes). Fuentes en `docs/evidencias/`: `carga_canje_2026-10-05_181850`,
+`carga_canje_2026-10-07_144900`, `carga_canje_2026-10-07_144953`,
+`carga_canje_2026-10-12_234940` (solo `.txt`) y `carga_canje_2026-10-13_221608`.
+
+| Conc. | Corrida | Peticiones | Éxito | p50 | p95 | p99 | máx | throughput |
+|---|---|---|---|---|---|---|---|---|
+| 60 | 2026-10-05 (sin parcheo) | 2714 | 100 % | 3900 ms | 6800 ms | 7600 ms | 8377 ms | 15.0 req/s |
+| 60 | 2026-10-07, corrida 1 | 3000 | 100 % | 190 ms | 250 ms | 370 ms | 406 ms | 289.7 req/s |
+| 60 | 2026-10-07, corrida 2 | 3000 | 100 % | 200 ms | 240 ms | 250 ms | 251 ms | 284.1 req/s |
+| 60 | 2026-10-12, SSD anterior | 3000 | 100 % | 170 ms | 220 ms | 350 ms | 389 ms | 321.0 req/s |
+| 60 | **2026-10-13, SSD nuevo** | 3000 | 100 % | 180 ms | 240 ms | 400 ms | 422 ms | 301.3 req/s |
+| 90 | 2026-10-05 (sin parcheo) | 2576 | 100 % | 6100 ms | 11000 ms | 12000 ms | 13768 ms | 14.3 req/s |
+| 90 | 2026-10-07, corrida 1 | 3000 | 100 % | 270 ms | 400 ms | 600 ms | 1388 ms | 302.2 req/s |
+| 90 | 2026-10-07, corrida 2 | 3000 | 100 % | 260 ms | 310 ms | 330 ms | 1315 ms | 321.5 req/s |
+| 90 | 2026-10-12, SSD anterior | 3000 | 100 % | 260 ms | 310 ms | 330 ms | 1335 ms | 321.6 req/s |
+| 90 | **2026-10-13, SSD nuevo** | 3000 | 100 % | 260 ms | 320 ms | 340 ms | 1376 ms | 315.0 req/s |
+
+**Detección** (`python scripts/generar_datos_evaluacion.py --n 30`, que al terminar
+corre `metricas_deteccion.py` sobre su manifiesto). Fuentes:
+`datos_evaluacion_2026-10-05_161522` / `metricas_deteccion_2026-10-05_161626` y
+`datos_evaluacion_2026-10-13_221646` / `metricas_deteccion_2026-10-13_221657`.
+
+| Corrida | Peticiones | Detección global | Falsos positivos |
+|---|---|---|---|
+| 2026-10-05 | 360 | 210/240 = 0.875 (IC95 0.827–0.911) | 0/90 = 0.000 (IC95 0.000–0.041) |
+| **2026-10-13, SSD nuevo** | 360 | 210/240 = 0.875 (IC95 0.827–0.911) | 0/90 = 0.000 (IC95 0.000–0.041) |
+
+### Lectura de los datos
+
+- **La carga se reproduce.** Las cuatro corridas posteriores al parcheo de `eventlet`
+  (2026-10-07) caen en la misma banda: p50 de 170–200 ms con 60 y 260–270 ms con 90,
+  throughput de 284–322 req/s, 100 % de éxito y 0 nodos `IntentoRechazado` en cada
+  limpieza. La corrida de hoy está dentro del rango de las anteriores, no en un
+  extremo. La del 2026-10-05 es la línea base sin parcheo y no sirve para medir
+  reproducibilidad; se incluye solo como referencia.
+- **El máximo de ~1.3–1.4 s con 90 aparece en las cuatro corridas parcheadas**, en los
+  dos discos. Refuerza la lectura del 2026-10-07: es un evento aislado del arranque
+  del nivel, no ruido de una corrida ni del disco.
+- **La detección es idéntica, escenario por escenario y motivo por motivo.** Los
+  `.txt` de métricas solo difieren en la marca de tiempo y el nombre del manifiesto. Es
+  lo esperado: el banco es determinista y la decisión de rechazar no depende del
+  hardware. El 0.875 global sigue siendo la consecuencia de `proxy_reenrolado`
+  (0/30), documentada el 2026-10-05.
+- **Matiz de la corrida del 2026-10-12:** se hizo con `server.py` arrancado a mano
+  ("gestionado por el script: False") y en el SSD que después resultó defectuoso. Sus
+  cifras coinciden con las demás, pero su `.json` se perdió. Se conserva como dato y no
+  como corrida principal.
+
+### Hallazgo: el visor sí manda `Origin`, en la mejora a WebSocket
+
+Al arrancar `server.py`, el log registró `http://localhost:26998 is not an accepted
+origin`. Esto **contradice en parte** la entrada del 2026-10-07, que afirma que "el
+cliente Python de `visor.py` no manda cabecera `Origin`… así que no se ve afectado".
+Revisado en el código de las bibliotecas del `.venv`, sin cambiar nada del proyecto:
+
+- `python-engineio` conecta primero por **long-polling** con `requests`, que no manda
+  `Origin`; ese handshake pasa.
+- Después intenta **mejorar la conexión a WebSocket** con `websocket-client`, y esa
+  biblioteca agrega por su cuenta `Origin: http://<host>:<puerto>` del servidor de
+  destino (`websocket/_handshake.py`, salvo que se pida `suppress_origin`). Como
+  `http://localhost:26998` no está en `SOCKETIO_CORS_ORIGINS`, el servidor rechaza la
+  mejora.
+- El cliente trata un fallo de la mejora como no fatal (`engineio/client.py`, rama
+  `upgrade`) y **se queda en long-polling**.
+
+**Es inofensivo en lo funcional:** `new_token_signal` llega igual por long-polling. En
+la prueba manual el QR rotó en el mismo segundo del canje (22:12:35). **Pero la
+afirmación del 2026-10-07 es inexacta:** el visor sí se ve afectado, porque funciona
+degradado a long-polling y no por WebSocket. En producción pasaría lo mismo con
+`Origin: https://prueba.almxlvx.com`.
+
+### Pendiente
+
+- **Corregir la afirmación del 2026-10-07** con una nota de actualización que remita a
+  esta entrada.
+- **Decidir si se restablece el WebSocket del visor (trabajo futuro, no se toca antes
+  de la entrega).** Hay dos vías:
+  - agregar el origen del propio servidor (`http://localhost:26998` en desarrollo,
+    `https://prueba.almxlvx.com` en producción) a `SOCKETIO_CORS_ORIGINS`. Ese origen
+    es el mismo servidor, así que no abre la puerta a terceros;
+  - o fijar `transports=['polling']` en el `sio.connect` del visor, para que la
+    degradación sea explícita y no se registre como error.
+
+  Mientras tanto, el sistema funciona y lo medido no cambia.
